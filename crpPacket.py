@@ -5,6 +5,7 @@
 
 BYTE_SIZE = 8
 FLETCHER_CONFIG = (16, 32, 64)
+PACKET_HEADER = {"sourcePort", "destPort", "seqNum", "ackNum", "headerLen", "ack", "rst", "syn", "fin", "recvWindowSize", "checksum"}
 
 # TODO: documentation
 
@@ -33,12 +34,44 @@ def bits2Str(bits, byteLength):
 
     return s
 
+# TODO: modify header strucutre for the line of headerlength, ack, syn, rst, fin to meet length requirement
+# Serialize normalized packet in fict from to a string
+def normalPacketSerialize(packet):
+    packetString = ""
+    packetString += bits2Str(str(bin(packet["sourcePort"]))[2:],2)
+    packetString += bits2Str(str(bin(packet["destPort"]))[2:],2)
+    packetString += bits2Str(str(bin(packet["seqNum"]))[2:],4)
+    packetString += bits2Str(str(bin(packet["ackNum"]))[2:],4)
+    packetString += bits2Str(str(bin(packet["headerLen"]))[2:] + str(bin(packet["ack"]))[2:] + str(bin(packet["rst"]))[2:] + str(bin(packet["syn"]))[2:] + str(bin(packet["fin"]))[2:], 1)
+    packetString += bits2Str(str(bin(packet["recvWindowSize"]))[2:], 3)
+    packetString += bits2Str(str(bin(packet["checksum"]))[2:],4)
+    if packet["headerLen"] != 0:
+        packetString += bits2Str(str(bin(packet["option"]))[2:], packet["headerLen"] * 4)
+    if "data" in packet:
+        packetString += packet["data"]    
+    return packetString
+
 # Serialize packet in dict form to a string
 def packetSerialize(packet):
+    packetString = ""
+    try:
+        # normalize header with empty fields
+        for field in PACKET_HEADER:
+            if field not in packet:
+                packet[field] = 0
+        packetString = normalPacketSerialize(packet)
+    except:
+        print "Unexpected error in crp packet serialization"
+        raise 
+    return packetString
 
 # Deserialize a packet in string form into dict
 def packetDeserialize(packetString):
+    try:
+    except:
+    return 
 
+# TODO: implement fletcher details
 # Fletcher checksum
 # More details can be found on http://www.drdobbs.com/database/fletchers-checksum/184408761
 def fletcherCheckSum(packetString, k):
