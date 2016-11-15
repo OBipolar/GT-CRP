@@ -5,7 +5,7 @@
 
 BYTE_SIZE = 8
 FLETCHER_CONFIG = (16, 32, 64)
-PACKET_HEADER = {"sourcePort", "destPort", "seqNum", "ackNum", "headerLen", "ack", "rst", "syn", "fin", "recvWindowSize", "checksum"}
+PACKET_HEADER = ("sourcePort", "destPort", "seqNum", "ackNum", "headerLen", "ack", "rst", "syn", "fin", "recvWindowSize", "checksum")
 
 # TODO: documentation
 
@@ -67,9 +67,29 @@ def packetSerialize(packet):
 
 # Deserialize a packet in string form into dict
 def packetDeserialize(packetString):
+    packet = {}
     try:
+        packetBitString = str2Bits(packetString)
+        packet["sourcePort"] = int(packetBitString[0:16], 2)
+        packet["destPort"] = int(packetBitString[16:32], 2)
+        packet["seqNum"] = int(packetBitString[32:64], 2)
+        packet["ackNum"] = int(packetBitString[64:96], 2)
+        packet["headerLen"] = int(packetBitString[96:100], 2)
+        packet["ack"] = int(packetBitString[100:101], 2)
+        packet["rst"] = int(packetBitString[101:102], 2)
+        packet["syn"] = int(packetBitString[102:103], 2)
+        packet["fin"] = int(packetBitString[103:104], 2)
+        packet["recvWindowSize"] = int(packetBitString[104:128], 2)
+        packet["checksum"] = int(packetBitString[128:160], 2)
+        if packet["headerLen"] != 0:
+            packet["option"] = int(packetBitString[160: (160 + packet["headerLen"]*4*BYTE_SIZE)], 2)
+        else:
+            packet["option"] = 0;
+        packet["data"] = packetString[20 + packet["headerLen"] * 4:]
     except:
-    return 
+        print "Unexpected error in crp packet string deserialization"
+        raise
+    return packet
 
 # TODO: implement fletcher details
 # Fletcher checksum
