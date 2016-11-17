@@ -96,4 +96,34 @@ def packetDeserialize(packetString):
 # More details can be found on http://www.drdobbs.com/database/fletchers-checksum/184408761
 def fletcherCheckSum(packetString, k):
     if k not in FLETCHER_CONFIG:
-        raise ValueError("Valid choices of k are 16, 32 and 64")
+        raise ValueError("Valid choices of k should be 16, 32 and 64")
+    sum1 = 0
+    sum2 = 0
+    count = len(packetString)/k
+    for index in range(count):
+        sum1 = (sum1 + packetString[count*k:(count+1)*k])%255
+        sum2 = (sum2+sum1)%255
+    sum1 = bin(sum1)[2:]
+    sum2 = bin(sum2<<8)[2:]
+    return sum2+sum1
+
+class Queue(list):
+    def __init__(self):
+        self.list = []
+
+    def push(self,item):
+        "Enqueue the 'item' into the queue"
+        self.list.insert(0,item)
+
+    def pop(self):
+        """
+          Dequeue the earliest enqueued item still in the queue. This
+          operation removes the item from the queue.
+        """
+        return self.list.pop()
+
+    def isEmpty(self):
+        "Returns true if the queue is empty"
+        return len(self.list) == 0
+
+    
