@@ -15,15 +15,15 @@ class CRP:
     	self.portNum = None
     	self.IP = socket.gethostbyname(socket.gethostname())
     	self.destination = None #[addr, port]
-    	self.dataSocket.settimeout(30) #timeout for whole connection
     	self.sender_seqNum = 0
-    	self.receiver_seqNum
+    	self.receiver_seqNum = 0
     	self.close = False
     	self.ackedNum = set()
 
     def setupServer(self,port):
         #three way handshake of receiver
     	self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        self.dataSocket.settimeout(100) #timeout for whole connection
         listen_addr = (self.IP, port)
         self.dataSocket.bind(listen_addr)
     	while True:
@@ -70,8 +70,15 @@ class CRP:
 
     def receiver(self):
     	while 1:
-            time.sleep(0.1)
+            try:
+                time.sleep(0.1)
+            except socket.timeout:
+                print "connection timeout"
+                self.receiver_close()
             dataString, addr = self.dataSocket.recvfrom(self.packetSize)[0]
+    
+    def receiver_close(self):
+        pass
 
     #this is used for send individual packet, used for receiver
     def _sendPacket(self, data,header):

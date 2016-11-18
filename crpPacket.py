@@ -253,3 +253,12 @@ class Queue(list):
     def isEmpty(self):
         "Returns true if the queue is empty"
         return len(self.list) == 0
+    
+    def insert_inorder(self,item):
+        self.list.append(item)
+        self.list.sort()
+                    
+                    
+                    
+                    
+            
