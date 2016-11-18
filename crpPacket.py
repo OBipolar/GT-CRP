@@ -105,7 +105,8 @@ def fletcherCheckSum(packetString, k):
         sum2 = (sum2+sum1)%255
     sum1 = bin(sum1)[2:]
     sum2 = bin(sum2<<8)[2:]
-    return sum2+sum1
+    zero16 = "0000000000000000"
+    return sum2+sum1+zero16
 
 class Queue(list):
     def __init__(self):
