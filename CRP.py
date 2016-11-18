@@ -3,7 +3,10 @@ from crpPacket import *
 import threading
 import sys
 import time
+<<<<<<< HEAD
 import netaddr
+=======
+>>>>>>> master
 
 class CRP:
 
@@ -22,9 +25,12 @@ class CRP:
     	self.close = False
     	self.ackedNum = set()
 
+<<<<<<< HEAD
     """
         Establish socket for incoming connection
     """
+=======
+>>>>>>> master
     def setupServer(self,port):
     	self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
         listen_addr = (self.IP, port)
@@ -75,7 +81,11 @@ class CRP:
     	pass
 
     #this is used for send individual packet, used for receiver
+<<<<<<< HEAD
     def _sendPacket(self, data, header):
+=======
+    def _sendPacket(self, data,header):
+>>>>>>> master
     	packet = dict()
     	packet["sourcePort"] = self.portNum
     	packet["destPort"] = self.destination[1]
@@ -96,6 +106,7 @@ class CRP:
     def readData(self):
     	pass
 
+<<<<<<< HEAD
     """
         Establish connection from client to server
         Supports both IPv4 and IPv6
@@ -126,6 +137,10 @@ class CRP:
             tListener = threading.Thread(target=self.receiver)
             tListener.daemon = True
             tListener.start()
+=======
+    def connectTo(self, selfPort, serverIP, serverPort):
+    	pass
+>>>>>>> master
 
     def close(self):
     	pass
