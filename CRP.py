@@ -11,7 +11,7 @@ class CRP:
     	self.notAckedQueue = Queue() # [packetString, timeStamp]
     	self.receiveBUffer = Queue()
     	self.packetSize = 1024
-    	self.buffsize = 4096
+    	self.buffsize = 65535
     	self.portNum = None
     	self.IP = socket.gethostbyname(socket.gethostname())
     	self.destination = None #[addr, port]
@@ -22,6 +22,7 @@ class CRP:
     	self.ackedNum = set()
 
     def setupServer(self,port):
+        #three way handshake of receiver
     	self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
         listen_addr = (self.IP, port)
         self.dataSocket.bind(listen_addr)
@@ -36,14 +37,14 @@ class CRP:
                 self.timeout = 2 #init timeout for packet resend is 2 seconds
 
                 # send ack back to client
-                self._sendPacket("", {"ack": 1})
+                self._sendPacket("", {"ack": 1, "syn":1})
 
                 # # wait for ack from client
                 ackFromClient = self._receivePacket()
                 ackFromClientDict = packetDeserialize(ackFromClient)
                 if (ackFromClientDict['checksum'] == fletcherCheckSum(data,16) and ackFromClientDict['ack'] == 1):
                     print "BOOM! Shakalaka: " + str(addr[1])
-                    # ------------FINISH THREE WAY HANDSHAKE--------------
+                    # ------------FINISH THREE WAY HANDSHAKE--------------#
                     tSender = threading.Thread(target=self.sender)
                     tSender.daemon = True
                     tSender.start()
@@ -68,7 +69,9 @@ class CRP:
                     self.notAckedQueue.push((packetString, time.time()))
 
     def receiver(self):
-    	pass
+    	while 1:
+            time.sleep(0.1)
+            dataString, addr = self.dataSocket.recvfrom(self.packetSize)[0]
 
     #this is used for send individual packet, used for receiver
     def _sendPacket(self, data,header):
