@@ -14,14 +14,14 @@ class CRP:
     	self.portNum = None
     	self.IP = socket.gethostbyname(socket.gethostname())
     	self destination = None
-    	self.dataSocket.settimeout(30) #timeout for whole connection
     	self.sender_seqNum = 0
     	self.receiver_seqNum
     	self.close = False
     	self.ackedNum = set()
 
     def setupServer(self,port):
-    	self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+    	self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM) #init data socket
+        self.dataSocket.settimeout(30) #timeout for whole connection
         listen_addr = (self.IP, port)
         self.dataSocket.bind(listen_addr)
     	while True:
@@ -32,11 +32,10 @@ class CRP:
                 # create new
                 self.portNum = port
                 self.destination = addr
-                self.timeout = 2 #init timeout for packet resend is 2 seconds
+                self.timeout = 2 #init timeout for packet resend is 2 seco`nds
 
                 # send ack back to client
                 self._sendPacket("", {"ack": 1})
-                
                 # # wait for ack from client
                 ackFromClient = self._receivePacket()
                 ackFromClientDict = packetDeserialize(ackFromClient)
