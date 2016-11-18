@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Author: Shaohui Xu
 
 # CRP Packet Serializer and Deserializer
@@ -127,7 +126,6 @@ class Queue(list):
         return len(self.list) == 0
 
     
-=======
 # Author: Shaohui Xu
 
 # CRP Packet Serializer and Deserializer
@@ -221,7 +219,6 @@ def packetDeserialize(packetString):
         raise
     return packet
 
-# TODO: implement fletcher details
 # Fletcher checksum
 # More details can be found on http://www.drdobbs.com/database/fletchers-checksum/184408761
 def fletcherCheckSum(packetString, k):
