@@ -46,7 +46,7 @@ class CRP:
                 ackFromClient = self._receivePacket()
                 ackFromClientDict = packetDeserialize(ackFromClient)
                 if (ackFromClientDict['checksum'] == fletcherCheckSum(data,16) and ackFromClientDict['ack'] == 1):
-                    print "BOOM! Shakalaka: " + str(addr[1])
+                    print "Three way handshake success: " + str(addr[1])
                     # ------------FINISH THREE WAY HANDSHAKE--------------
                     tSender = threading.Thread(target=self.sender)
                     tSender.daemon = True
@@ -65,15 +65,32 @@ class CRP:
                 packet = packetDeserialize(packetString)
                 # ------------DEBUG INFO--------------    
                 pprint("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
-                pprint("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
+                pprint("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))
                 # ------------END DEBUG INFO--------------
                 self.dataSocket.sendto(packetString, self.destination[0])
                 if packet["seqNum"] != 0:
                     self.notAckedQueue.push((packetString, time.time()))
 
     def receiver(self):
-    	pass
-
+      while 1:
+            try:
+                time.sleep(0.1)
+            except socket.timeout:
+                print "connection timeout"
+                self.receiver_close()
+            dataString, addr = self.dataSocket.recvfrom(self.packetSize)[0]
+            if len(dataString) == 0:
+              print "invalid packet"
+            decodedData = self.packetDeserialize(dataString)
+            if fletcherCheckSum(dataString,16) !=decodedData["checksum"]:
+              print "packet with sequence number ",decodedData["seqNum"]," is corrupted"
+              self._sendPacket("", {"ack": 1})
+              
+            print("RECEIVED: seqNum=" + str(decodedData["seqNum"]) + " ackNum=" + str(decodedData["ackNum"]) + " ack=" + str(decodedData["ack"])  + " fin=" + str(decodedData["fin"])) 
+    
+    def self.receiver_close(self):
+      pass 
+    
     #this is used for send individual packet, used for receiver
     def _sendPacket(self, data, header):
     	packet = dict()
@@ -88,6 +105,10 @@ class CRP:
 
     	self.dataSocket.sendto(sendString,self.destination)
 
+    """
+        Send data from client to server 
+    """
+    def sendData(self, data):
     	
 
     def _receive_packet(self):
@@ -129,4 +150,3 @@ class CRP:
 
     def close(self):
     	pass
-
