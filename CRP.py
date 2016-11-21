@@ -91,7 +91,7 @@ class CRP:
             if data["checksum"] =  fletcherCheckSum(data["data"],16):
                 #the other side send ackNum = desired SequenceNum
                 #when ack is 1, whcih means CRP previously sent something
-                if data["ack"] == 1 && data["rst"]!=1:
+                if data["ack"] == 1 and data["rst"]!=1:
                     if str(data['ackNum']) in self.ackedNum:
                         self.ackedNum[str(data['ackNum'])] += 1
                     else:
@@ -106,7 +106,7 @@ class CRP:
                         self._push_to_Buffer(data)
                         self._check_buffer_send_Ack(data)
                 #if receive NACK, retransmit the packet
-                elif data["ack"] == 1 && data["rst"]==1:
+                elif data["ack"] == 1 and data["rst"]==1:
                     for index, notAckPacket in enumerate(self.notAckedQueue.list):
                         if notAckPacket["seqNum"] == data["ackNum"]:
                             self.sendingQueue.push_front(self.notAckedQueue.remove(index))
