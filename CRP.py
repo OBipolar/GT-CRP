@@ -71,8 +71,7 @@ class CRP:
     	while 1:
             time.sleep(0.5)
             if not self.sendingQueue.isEmpty: # TODO：check if notackqueue has space using windowsize 
-                packetString = self.sendingQueue.pop()
-                packet = packetDeserialize(packetString)
+                packet = self.sendingQueue.pop()
                 # ------------DEBUG INFO--------------    
                 pprint("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
                 pprint("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
@@ -296,17 +295,18 @@ class CRP:
 """
     def close(self):
         # Create finish packet 
-        if not self.ready_to_close:
+        if not self.ready_for_close:
             finPacket = {
                 "sourcePort": self.portNum,
                 "destPort": self.destination[1],
                 "seqNum": 0,
-                "fin": 1,
-                "data": ' '*(self.packetSize - 20)
-            }
+                "fin": 1
+                }
             
-            finPacketString = packetSerialize(finPacket)
-            self.sending_queue.append(finPacketString)
+            self.sendingQueue.append(finPacket)
+            self._sendPacket("", finPacket)  
+        print("CLOSED")
+        sys.exit(0)
 
     def check_timeout_resend():
         while(True):
