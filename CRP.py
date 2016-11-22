@@ -22,6 +22,7 @@ class CRP:
     	self.close = False
     	self.ackedNum = dict()
         self.receivedSeqNum = []
+        self.readSeqNum = 0
         self.lock = threading.Lock()
         self.normalClose = None
 
@@ -211,8 +212,27 @@ class CRP:
     def _receive_packet(self):
     	return self.dataSocket.recvfrom(self.packetSize)[0]
 
-    def readData(self):
-    	pass
+    def readData(self, terminator):
+        data = ""
+    	if not self.receiveBUffer.empty():
+            topPacket = self.receiveBUffer.get()
+            if topPacket["seqNum"] == self.readSeqNum:
+                done = False
+                nextSeqNum = self.readSeqNum + self.packetSize
+                data += topPacket["data"]
+                while not done:
+                    nextPacket = self.receiveBUffer.get()
+                    if nextPacket["seqNum"] == nextSeqNum:
+                        data += nextPacket["data"]
+                        if terminator in data:
+                            done = True
+                        nextSeqNum = nextSeqNum + self.packetSize
+                    else:
+                        done = True
+                        self.receiveBUffer.put(nextPacket)
+                self.readSeqNum = nextSeqNum
+                return data
+        return data
 
     def connectTo(self, selfPort, serverIP, serverPort):
     	if netaddr.valid_ipv4(serverIP):
@@ -242,4 +262,4 @@ class CRP:
             tListener.start()
 
     def close(self):
-    	pass
+        pass
