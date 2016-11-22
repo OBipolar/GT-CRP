@@ -78,7 +78,7 @@ class CRP:
                 # ------------END DEBUG INFO--------------
                 self.dataSocket.sendto(packetString, self.destination[0])
                 if packet["seqNum"] != 0:
-                    self.notAckedQueue.push((packetString, time.time())) # TODO: resend if packet in notAckedQueue exceed timeout 
+                    self.notAckedQueue.push([packetString, time.time()]) # TODO: resend if packet in notAckedQueue exceed timeout 
 
 
     def receiver(self):
@@ -100,7 +100,9 @@ class CRP:
                 if data["ack"] == 1 and data["rst"] == 1:
                     for index, notAckPacket in enumerate(self.notAckedQueue.list):
                         if notAckPacket[0]["seqNum"] == data["ackNum"]:
-                            self.sendingQueue.push_front(self.notAckedQueue.remove(index))
+                            mypacket = self.notAckedQueue.remove(index)
+                            mypacket[1] = time.time()
+                            self.sendingQueue.push_front(mypacket)
                             break
                 #case 2: empty ACK packet--------------------------------
                 if data['ack'] == 1 and len(data['data'].strip()) == 0:
@@ -136,7 +138,7 @@ class CRP:
                     self._check_buffer_send_Ack(data)
                 #case 5 finish connection-------------------------------
                 elif data['fin'] == 1:
-                    self._piggy_backing_send_ack(data)
+                    self._send_ack(data)
                     self.ready_for_close = True
                     self.receiver_close()
                 else:
@@ -212,7 +214,9 @@ class CRP:
             if value >= 3:
                 for index, notAckPacket in enumerate(self.notAckedQueue.list):
                     if notAckPacket["seqNum"] == key:
-                        self.sendingQueue.push_front(self.notAckedQueue.remove(index))
+                        mypacket = self.notAckedQueue.remove(index)
+                        mypacket[1] = time.time()
+                        self.sendingQueue.push_front(mypacket)
                         self.ackedNum[key] = 0
             
     #this is used for send individual packet, used for receiver
@@ -282,6 +286,13 @@ class CRP:
             tListener = threading.Thread(target=self.receiver)
             tListener.daemon = True
             tListener.start()
+            tcheck_timeout = threading.Thread(target=self.check_timeout_resend)
+            tcheck_timeout.daemon = True
+            tcheck_timeout.start()
+            tSender.join()
+            tListener.join()
+            tcheck_timeout.join()
+
 
 """
     Called by server to close the connection
@@ -326,5 +337,7 @@ class CRP:
             sleep(0.05)
             for index, packet in enumerate(self.notAckedQueue):
                 if time.time() - packet[1] > self.timeout:
-                    self.sendingQueue.push_front(self.notAckedQueue.remove(index))
+                    packet = self.notAckedQueue.remove(index)
+                    packet[1] = time.time()
+                    self.sendingQueue.push_front(packet)
                 
