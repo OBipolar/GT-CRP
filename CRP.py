@@ -10,36 +10,43 @@ class CRP:
     	self.sendingQueue = Queue()
     	self.notAckedQueue = Queue() # [packetString, timeStamp]
     	self.receiveBUffer = Queue()
-        self.expectedSeqNum = 0
+        self.expectedSeqNum = 0 # expected sequence number in buffer
     	self.packetSize = 1024
         self.receiver_windowSize = 20
         self.send_windowSize = 20
     	self.portNum = None
-    	self.IP = socket.gethostbyname(socket.gethostname())
+    	self.IP = socket.gethostbyname(socket.gethostname())#get self IP address
     	self.destination = None #[addr, port]
-    	self.sender_seqNum = 0
-    	self.receiver_seqNum = 0
-    	self.close = False
+    	self.sender_seqNum = 0 #sequence number associated with sending queue
+    	self.receiver_seqNum = 0 #ACK sequence number
+    	self.ready_for_close = False
     	self.ackedNum = dict()
         self.receivedSeqNum = []
         self.readSeqNum = 0
         self.lock = threading.Lock()
         self.normalClose = None
 
-    def setupServer(self,port):
+    def setupServer(self,port,IPV6):
         #three way handshake of receiver
-    	self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        if IPV6:
+            self.dataSocket = socket.socket(socket.AF_INET6,socket.SOCK_DGRAM)
+        else：
+    	    self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
         self.dataSocket.settimeout(100) #timeout for whole connection
+<<<<<<< HEAD
         listen_addr = (self.IP, port) #TODO:try empty ip if necessary
+=======
+        listen_addr = ("", port)
+>>>>>>> 8fe1c0f2d37e7b8aa5066afc3d6de393180d11aa
         self.dataSocket.bind(listen_addr)
     	while True:
     	    data, addr = self.dataSocket.recvfrom(24)
             synPacketDictFromClient = packetDeserialize(data)
-            # print "get initail syn!"
+            # Three way handshake start---------------------------------------- 
             if (synPacketDictFromClient['checksum'] == fletcherCheckSum(data["data"],16) and synPacketDictFromClient['syn'] == 1):
                 # create new
-                self.portNum = port
-                self.destination = addr
+                self.portNum = port #port listening
+                self.destination = addr #send packet to destination
                 self.timeout = 2 #init timeout for packet resend is 2 seconds
 
                 # send ack back to client
@@ -57,8 +64,12 @@ class CRP:
                     tListener = threading.Thread(target=self.receiver)
                     tListener.daemon = True
                     tListener.start()
+                    tcheck_timeout = threading.Thread(target=self.check_timeout_resend)
+                    tcheck_timeout.daemon = True
+                    tcheck_timeout.start()
                     tSender.join()
                     tListener.join()
+                    tcheck_timeout.join()
 
     def sender(self):
     	while 1:
@@ -82,12 +93,10 @@ class CRP:
             except socket.timeout:
                 print "connection timeout"#a connection cannot exeet the timeout limit
                 self.receiver_close()
-            dataString, addr = self.dataSocket.recvfrom(self.packetSize)[0]
+            dataString, addr = self.dataSocket.recvfrom(self.packetSize)
             data = packetDeserialize(dataString)
             print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data[fin]
-            #discard it if it's a duplicate packet
-            if data["seqNum"] in self.receivedSeqNum:
-                continue
+
             #check sum
             if data["checksum"] ==  fletcherCheckSum(data["data"],16):
                 #the other side send ackNum = desired SequenceNum
@@ -95,7 +104,7 @@ class CRP:
                 #case 1: NACK-------------------------------------------- 
                 if data["ack"] == 1 and data["rst"] == 1:
                     for index, notAckPacket in enumerate(self.notAckedQueue.list):
-                        if notAckPacket["seqNum"] == data["ackNum"]:
+                        if notAckPacket[0]["seqNum"] == data["ackNum"]:
                             self.sendingQueue.push_front(self.notAckedQueue.remove(index))
                             break
                 #case 2: empty ACK packet--------------------------------
@@ -120,7 +129,7 @@ class CRP:
                     #remove the acked packet from the notAckedQueue
                     if self.ackedNum[str(data['ackNum'])] == 1:
                         for index, packet in enumerate(self.notAckedQueue.list):
-                            if packet['seqNum'] == data["ackedNum"] - 1:
+                            if packet[0]['seqNum'] == data["ackedNum"] - 1:
                                 self.notAckedQueue.remove(index)
                                 break
                     self._check_nackQueue_retransmit()
@@ -130,8 +139,10 @@ class CRP:
                 elif data['ack'] == 0 and len(data['data'].strip()) > 0:
                     self._push_to_Buffer(data)
                     self._check_buffer_send_Ack(data)
+                #case 5 finish connection-------------------------------
                 elif data['fin'] == 1:
                     self._piggy_backing_send_ack(data)
+                    self.ready_for_close = True
                     self.receiver_close()
                 else:
                     print "wrong packet sent"
@@ -289,6 +300,7 @@ class CRP:
 """
     def close(self):
         # Create finish packet 
+<<<<<<< HEAD
         if not self.ready_to_close:
             finPacket = {
                 "sourcePort": self.portNum,
@@ -301,3 +313,27 @@ class CRP:
             finPacketString = packetSerialize(finPacket)
             self.sending_queue.append(finPacketString)
             
+=======
+        finPacket = {
+            "sourcePort": self.portNum,
+            "destPort": self.destination[1],
+            "seqNum": 0,
+            "fin": 1,
+            "data": ' '*(self.packetSize - 20)
+        }
+        
+        finPacketString = packetSerialize(finPacket)
+        self.sending_queue.append(finPacketString)
+
+    def check_timeout_resend():
+        while(True):
+            if self.ready_for_close:
+                break
+            sleep(0.05)
+            for index, packet in enumerate(self.notAckedQueue):
+                if time.time() - packet[1] > self.timeout:
+                    self.sendingQueue.push_front(self.notAckedQueue.remove(index))
+                
+        
+        
+>>>>>>> 8fe1c0f2d37e7b8aa5066afc3d6de393180d11aa
