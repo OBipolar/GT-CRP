@@ -296,7 +296,6 @@ class CRP:
 """
     def close(self):
         # Create finish packet 
-<<<<<<< HEAD
         if not self.ready_to_close:
             finPacket = {
                 "sourcePort": self.portNum,
@@ -308,18 +307,6 @@ class CRP:
             
             finPacketString = packetSerialize(finPacket)
             self.sending_queue.append(finPacketString)
-            
-=======
-        finPacket = {
-            "sourcePort": self.portNum,
-            "destPort": self.destination[1],
-            "seqNum": 0,
-            "fin": 1,
-            "data": ' '*(self.packetSize - 20)
-        }
-        
-        finPacketString = packetSerialize(finPacket)
-        self.sending_queue.append(finPacketString)
 
     def check_timeout_resend():
         while(True):
@@ -330,6 +317,3 @@ class CRP:
                 if time.time() - packet[1] > self.timeout:
                     self.sendingQueue.push_front(self.notAckedQueue.remove(index))
                 
-        
-        
->>>>>>> 8fe1c0f2d37e7b8aa5066afc3d6de393180d11aa
