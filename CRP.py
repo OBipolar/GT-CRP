@@ -33,11 +33,7 @@ class CRP:
         else：
     	    self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
         self.dataSocket.settimeout(100) #timeout for whole connection
-<<<<<<< HEAD
-        listen_addr = (self.IP, port) #TODO:try empty ip if necessary
-=======
         listen_addr = ("", port)
->>>>>>> 8fe1c0f2d37e7b8aa5066afc3d6de393180d11aa
         self.dataSocket.bind(listen_addr)
     	while True:
     	    data, addr = self.dataSocket.recvfrom(24)
