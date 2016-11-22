@@ -36,7 +36,7 @@ class CRP:
         listen_addr = ("", port)
         self.dataSocket.bind(listen_addr)
     	while True:
-    	    data, addr = self.dataSocket.recvfrom(24)
+    	    data, addr = self.dataSocket.recvfrom(self.packetSize)
             synPacketDictFromClient = packetDeserialize(data)
             # Three way handshake start---------------------------------------- 
             if (synPacketDictFromClient['checksum'] == fletcherCheckSum(data["data"],16) and synPacketDictFromClient['syn'] == 1):
@@ -196,7 +196,7 @@ class CRP:
         self.receivedSeqNum += 1
         rtpPacketDict["sourcePort"] = self.port
         rtpPacketDict["destPort"] = self.destAddr[1]
-        self._sendPacket("",{"ackNum":seqNum, "seqNum":self.sender_seqNum})
+        self._sendPacket("",{"ackNum":seqNum, "seqNum":self.receivedSeqNum})
 
 
     def _push_to_Buffer(self,data):
@@ -287,7 +287,7 @@ class CRP:
     Called by server to close the connection
 """
     def receiver_close(self):
-        close()
+        pass
 
 
 """
@@ -302,11 +302,15 @@ class CRP:
                 "seqNum": 0,
                 "fin": 1
                 }
-            
-            self.sendingQueue.append(finPacket)
-            self._sendPacket("", finPacket)  
-        print("CLOSED")
-        sys.exit(0)
+            self._sendPacket("", finPacket)
+            packet1,addr = self.dataSocket.recvfrom(self.packetSize)
+            packet2, addr = self.dataSocket.recvfrom(self.packetSize)
+            packet1 = packetDeserialize(packet1)
+            packet2 = packetDeserialize(packet2)
+            if(packet1['ack'] == 1 and packet2['fin'] == 1):
+                self._send_ack(packet2['seqNum']+1)
+            print("CLOSED")
+            sys.exit(0)
 
     def check_timeout_resend():
         while(True):

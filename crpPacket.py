@@ -140,9 +140,6 @@ class Queue():
         return len(self.list)
     
         
-        
-
-                    
-                    
-                    
-            
+if __name__ == "__main__":
+    
+    
