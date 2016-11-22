@@ -89,7 +89,7 @@ class CRP:
             if data["seqNum"] in self.receivedSeqNum:
                 continue
             #check sum
-            if data["checksum"] =  fletcherCheckSum(data["data"],16):
+            if data["checksum"] ==  fletcherCheckSum(data["data"],16):
                 #the other side send ackNum = desired SequenceNum
                 #when ack is 1, whcih means CRP previously sent something
                 if data["ack"] == 1 and data["rst"]!=1:
@@ -189,10 +189,6 @@ class CRP:
                         self.sendingQueue.push_front(self.notAckedQueue.remove(index))
                         self.ackedNum[key] = 0
             
-                        
-    def receiver_close(self):
-        pass
-
     #this is used for send individual packet, used for receiver
     def _sendPacket(self, data,header):
     	packet = dict()
@@ -261,5 +257,26 @@ class CRP:
             tListener.daemon = True
             tListener.start()
 
+"""
+    Called by server to close the connection
+"""
+    def receiver_close(self):
+        close()
+
+
+"""
+    Called by client to close the connection 
+"""
     def close(self):
-        pass
+        # Create finish packet 
+        finPacket = {
+            "sourcePort": self.portNum,
+            "destPort": self.destination[1],
+            "seqNum": 0,
+            "fin": 1,
+            "data": ' '*(self.packetSize - 20)
+        }
+        
+        finPacketString = packetSerialize(finPacket)
+        self.sending_queue.append(finPacketString)
+        
