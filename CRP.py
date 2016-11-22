@@ -287,7 +287,13 @@ class CRP:
     Called by server to close the connection
 """
     def receiver_close(self):
-        pass
+        self.receivedSeqNum += 1
+        self._sendPacket(data {"fin": 1, "seqNum":self.receivedSeqNum})
+        packet = self.dataSocket.recvfrom(self.packetSize)
+        packet = packetDeserialize(packet)
+        if(packet["ack"] == 1):
+            print "close connection"
+            sys.exit(0)
 
 
 """
@@ -304,6 +310,7 @@ class CRP:
                 }
             self._sendPacket("", finPacket)
             packet1,addr = self.dataSocket.recvfrom(self.packetSize)
+            sleep(1)
             packet2, addr = self.dataSocket.recvfrom(self.packetSize)
             packet1 = packetDeserialize(packet1)
             packet2 = packetDeserialize(packet2)
