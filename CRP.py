@@ -92,38 +92,58 @@ class CRP:
             if data["checksum"] ==  fletcherCheckSum(data["data"],16):
                 #the other side send ackNum = desired SequenceNum
                 #when ack is 1, whcih means CRP previously sent something
-                if data["ack"] == 1 and data["rst"]!=1:
-                    if str(data['ackNum']) in self.ackedNum:
-                        self.ackedNum[str(data['ackNum'])] += 1
-                    else:
-                        self.ackedNum[str(data['ackNum'])] = 1
-                    #remove the acked packet from the notAckedQueue    
-                    for index, packet in enumerate(self.notAckedQueue.list):
-                        if packet['seqNum'] == data["ackedNum"] - 1:
-                            self.notAckedQueue.remove(index)
-                            break
-                    self._check_nackQueue_retransmit()
-                    if len(data["data"]) != 0:
-                        self._push_to_Buffer(data)
-                        self._check_buffer_send_Ack(data)
-                #if receive NACK, retransmit the packet
-                elif data["ack"] == 1 and data["rst"]==1:
+                #case 1: NACK-------------------------------------------- 
+                if data["ack"] == 1 and data["rst"] == 1:
                     for index, notAckPacket in enumerate(self.notAckedQueue.list):
                         if notAckPacket["seqNum"] == data["ackNum"]:
                             self.sendingQueue.push_front(self.notAckedQueue.remove(index))
                             break
-                elif data["fin"] == 1:
+                #case 2: empty ACK packet--------------------------------
+                if data['ack'] == 1 and len(data['data'].strip()) == 0:
+                    if str(data['ackNum']) in self.ackedNum:
+                        self.ackedNum[str(data['ackNum'])] += 1
+                    else:
+                        self.ackedNum[str(data['ackNum'])] = 1
+                    #remove the acked packet from the notAckedQueue
+                    if self.ackedNum[str(data['ackNum'])] == 1:
+                        for index, packet in enumerate(self.notAckedQueue.list):
+                            if packet['seqNum'] == data["ackedNum"] - 1:
+                                self.notAckedQueue.remove(index)
+                                break
+                    self._check_nackQueue_retransmit()
+                #case 3 Data and ACK-------------------------------------
+                elif data['ack'] == 1 and len(data['data'].strip()) > 0:
+                    if str(data['ackNum']) in self.ackedNum:
+                        self.ackedNum[str(data['ackNum'])] += 1
+                    else:
+                        self.ackedNum[str(data['ackNum'])] = 1
+                    #remove the acked packet from the notAckedQueue
+                    if self.ackedNum[str(data['ackNum'])] == 1:
+                        for index, packet in enumerate(self.notAckedQueue.list):
+                            if packet['seqNum'] == data["ackedNum"] - 1:
+                                self.notAckedQueue.remove(index)
+                                break
+                    self._check_nackQueue_retransmit()
+                    self._push_to_Buffer(data)
+                    self._check_buffer_send_Ack(data)
+                #case 4 only data, no ACK--------------------------------
+                elif data['ack'] == 0 and len(data['data'].strip()) > 0:
+                    self._push_to_Buffer(data)
+                    self._check_buffer_send_Ack(data)
+                elif data['fin'] == 1:
                     self._piggy_backing_send_ack(data)
                     self.receiver_close()
                 else:
-                    if self._push_to_Buffer(data):
-                        self._check_buffer_send_Ack(data)
+                    print "wrong packet sent"
             else:
-                #send NACK if checksum fails, send the received packet seqNum as ackNum
-                self.receiver_seqNum += 1
-                self._send_NACK(data["seqNum"]) #ack and rst means NACK
+                if len(data['data'].strip()) > 0:
+                    self.receiver_seqNum += 1
+                    self._send_NACK(data["seqNum"]) #ack and rst means NACK
+                    
+                
     
     def _send_NACK(self,seqNum):
+        self.receivedSeqNum += 1
         self._sendPacket("", {"ack": 1, "rst":1, "ackNum": seqNum})
 
     def _check_buffer_send_Ack(self,data):
@@ -167,7 +187,7 @@ class CRP:
             self._send_ack(Mypacket["seqNum"]+1)
 
     def _send_ack(self, seqNum):
-        self.sender_seqNum += 1
+        self.receivedSeqNum += 1
         rtpPacketDict["sourcePort"] = self.port
         rtpPacketDict["destPort"] = self.destAddr[1]
         self._sendPacket("",{"ackNum":seqNum, "seqNum":self.sender_seqNum})
