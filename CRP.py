@@ -30,7 +30,7 @@ class CRP:
         #three way handshake of receiver
     	self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
         self.dataSocket.settimeout(100) #timeout for whole connection
-        listen_addr = (self.IP, port)
+        listen_addr = (self.IP, port) #TODO:try empty ip if necessary
         self.dataSocket.bind(listen_addr)
     	while True:
     	    data, addr = self.dataSocket.recvfrom(24)
@@ -63,7 +63,7 @@ class CRP:
     def sender(self):
     	while 1:
             time.sleep(0.5)
-            if not self.sendingQueue.isEmpty:
+            if not self.sendingQueue.isEmpty: # TODO：check if notackqueue has space using windowsize 
                 packetString = self.sendingQueue.pop()
                 packet = packetDeserialize(packetString)
                 # ------------DEBUG INFO--------------    
@@ -72,7 +72,7 @@ class CRP:
                 # ------------END DEBUG INFO--------------
                 self.dataSocket.sendto(packetString, self.destination[0])
                 if packet["seqNum"] != 0:
-                    self.notAckedQueue.push((packetString, time.time()))
+                    self.notAckedQueue.push((packetString, time.time())) # TODO: resend if packet in notAckedQueue exceed timeout 
 
 
     def receiver(self):
@@ -289,14 +289,15 @@ class CRP:
 """
     def close(self):
         # Create finish packet 
-        finPacket = {
-            "sourcePort": self.portNum,
-            "destPort": self.destination[1],
-            "seqNum": 0,
-            "fin": 1,
-            "data": ' '*(self.packetSize - 20)
-        }
-        
-        finPacketString = packetSerialize(finPacket)
-        self.sending_queue.append(finPacketString)
-        
+        if not self.ready_to_close:
+            finPacket = {
+                "sourcePort": self.portNum,
+                "destPort": self.destination[1],
+                "seqNum": 0,
+                "fin": 1,
+                "data": ' '*(self.packetSize - 20)
+            }
+            
+            finPacketString = packetSerialize(finPacket)
+            self.sending_queue.append(finPacketString)
+            
