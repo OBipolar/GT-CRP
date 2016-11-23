@@ -133,12 +133,12 @@ def fletcherCheckSum(packetString, k):
     return sum2+sum1+zero16
 
 def make8bit(string):
+    zeros = ''
     if len(string) != 8:
         compensate = 8 - len(string)
-        zeros = ''
         for x in range(0,compensate):
             zeros += "0"
-        return zeros+string
+    return zeros+string
 class Queue():
     """
         Self defined queue class
@@ -180,6 +180,5 @@ if __name__ == "__main__":
     packet["data"] = ""
     sendString = packetSerialize(packet)
     getString = packetDeserialize(sendString)
-    print fletcherCheckSum("sendStringdhcsbchdsgcbdshgcdsuhuhuhuhbchdsgcbdsyuyvtfvtcdc",16)
-    
+    checksum = fletcherCheckSum("sendStringdhcsbchdsgcbdshgcdsuhuhuhuhbchdsgcbdsyuyvtfvtcdc",16)
 
