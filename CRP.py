@@ -36,7 +36,9 @@ class CRP:
         self.dataSocket.settimeout(100) #timeout for whole connection
         listen_addr = ("", port)
         self.dataSocket.bind(listen_addr)
+        print "server listening on port " , port
     	while True:
+            time.sleep(1)
     	    data, addr = self.dataSocket.recvfrom(self.packetSize)
             synPacketDictFromClient = packetDeserialize(data)
             # Three way handshake start---------------------------------------- 
@@ -71,7 +73,7 @@ class CRP:
     def sender(self):
     	while 1:
             time.sleep(0.5)
-            if not self.sendingQueue.isEmpty: # TODO: check if notackqueue has space using windowsize 
+            if not self.sendingQueue.isEmpty(): # TODO: check if notackqueue has space using windowsize 
                 packet = self.sendingQueue.pop()
                 # ------------DEBUG INFO--------------    
                 pprint("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
@@ -85,10 +87,11 @@ class CRP:
     def receiver(self):
     	while 1:
             try:
-                time.sleep(0.1)
+                time.sleep(0.5)
             except socket.timeout:
                 print "connection timeout"#a connection cannot exeet the timeout limit
                 self.receiver_close()
+            print 'waiting for response'
             dataString, addr = self.dataSocket.recvfrom(self.packetSize)
             data = packetDeserialize(dataString)
             print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data[fin]
@@ -322,7 +325,7 @@ class CRP:
                 }
             self._sendPacket("", finPacket)
             packet1,addr = self.dataSocket.recvfrom(self.packetSize)
-            sleep(1)
+            time.sleep(1)
             packet2, addr = self.dataSocket.recvfrom(self.packetSize)
             packet1 = packetDeserialize(packet1)
             packet2 = packetDeserialize(packet2)
@@ -335,12 +338,15 @@ class CRP:
         while(True):
             if self.ready_for_close:
                 break
-            sleep(0.05)
-            for index, packet in enumerate(self.notAckedQueue):
+            time.sleep(0.1)
+            if self.notAckedQueue.isEmpty():
+                continue
+            for index, packet in enumerate(self.notAckedQueue.list):
                 if time.time() - packet[1] > self.timeout:
                     packet = self.notAckedQueue.remove(index)
                     packet[1] = time.time()
                     self.sendingQueue.push_front(packet)
+                
     def set_window_size(self,size):
         if size > 0:
             self.windowsize = size
