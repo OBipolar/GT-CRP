@@ -37,38 +37,36 @@ class CRP:
         listen_addr = ("", port)
         self.dataSocket.bind(listen_addr)
         print "server listening on port " , port
-    	while True:
-            time.sleep(1)
-    	    data, addr = self.dataSocket.recvfrom(self.packetSize)
-            synPacketDictFromClient = packetDeserialize(data)
-            # Three way handshake start---------------------------------------- 
-            if (synPacketDictFromClient['checksum'] == fletcherCheckSum(data["data"],16) and synPacketDictFromClient['syn'] == 1):
-                # create new
-                self.portNum = port #port listening
-                self.destination = addr #send packet to destination
-                self.timeout = 2 #init timeout for packet resend is 2 seconds
+        data, addr = self.dataSocket.recvfrom(self.packetSize)
+        synPacketDictFromClient = packetDeserialize(data)
+        # Three way handshake start---------------------------------------- 
+        if (synPacketDictFromClient['checksum'] == fletcherCheckSum(data["data"],16) and synPacketDictFromClient['syn'] == 1):
+            # create new
+            self.portNum = port #port listening
+            self.destination = addr #send packet to destination
+            self.timeout = 2 #init timeout for packet resend is 2 seconds
 
-                # send ack back to client
-                self._sendPacket("", {"ack": 1, "syn":1})
+            # send ack back to client
+            self._sendPacket("", {"ack": 1, "syn":1})
 
-                # # wait for ack from client
-                ackFromClient = self._receivePacket()
-                ackFromClientDict = packetDeserialize(ackFromClient)
-                if (ackFromClientDict['checksum'] == fletcherCheckSum(data,16) and ackFromClientDict['ack'] == 1):
-                    print "BOOM! Shakalaka: " + str(addr[1])
-                    # ------------FINISH THREE WAY HANDSHAKE--------------#
-                    tSender = threading.Thread(target=self.sender)
-                    tSender.daemon = True
-                    tSender.start()
-                    tListener = threading.Thread(target=self.receiver)
-                    tListener.daemon = True
-                    tListener.start()
-                    tcheck_timeout = threading.Thread(target=self.check_timeout_resend)
-                    tcheck_timeout.daemon = True
-                    tcheck_timeout.start()
-                    tSender.join()
-                    tListener.join()
-                    tcheck_timeout.join()
+            # # wait for ack from client
+            ackFromClient = self._receivePacket()
+            ackFromClientDict = packetDeserialize(ackFromClient)
+            if (ackFromClientDict['checksum'] == fletcherCheckSum(data,16) and ackFromClientDict['ack'] == 1):
+                print "BOOM! Shakalaka: " + str(addr[1])
+                # ------------FINISH THREE WAY HANDSHAKE--------------#
+                tSender = threading.Thread(target=self.sender)
+                #tSender.daemon = True
+                tListener = threading.Thread(target=self.receiver)
+                #tListener.daemon = True
+                tcheck_timeout = threading.Thread(target=self.check_timeout_resend)
+                #tcheck_timeout.daemon = True
+                tListener.start()
+                tSender.start()
+                tcheck_timeout.start()
+                # tSender.join()
+                # tListener.join()
+                # tcheck_timeout.join()
 
     def sender(self):
     	while 1:
@@ -285,17 +283,17 @@ class CRP:
             self._sendPacket("", {"ack": 1})
             # ------------FINISH THREE WAY HANDSHAKE--------------
             tSender = threading.Thread(target=self.sender)
-            tSender.daemon = True
-            tSender.start()
+            #tSender.daemon = True
             tListener = threading.Thread(target=self.receiver)
-            tListener.daemon = True
-            tListener.start()
+            #tListener.daemon = True
             tcheck_timeout = threading.Thread(target=self.check_timeout_resend)
-            tcheck_timeout.daemon = True
+            #tcheck_timeout.daemon = True
+            tListener.start()
+            tSender.start()
             tcheck_timeout.start()
-            tSender.join()
-            tListener.join()
-            tcheck_timeout.join()
+            # tSender.join()
+            # tListener.join()
+            # tcheck_timeout.join()
 
 
 

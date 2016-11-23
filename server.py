@@ -28,14 +28,10 @@ if port < 0  or port > 65535:
     sys.exit(1)
 
 tserver = threading.Thread(target = server.setupServer,args=[port,0])
-tserver.daemon = True
-tserver.start()
-tserver.join()
-
 tlistener = threading.Thread(target = listen_cmd)
-tlistener.daemon = True
 tlistener.start()
-tlistener.join()
+tserver.start()
+
     
 
 
