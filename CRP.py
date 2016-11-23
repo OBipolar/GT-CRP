@@ -229,7 +229,7 @@ class CRP:
         
     	for key in header:
     		packet[key] = header[key]
-    	sendString = normalPacketSerialize(packet)
+    	sendString = packetSerialize(packet)
 
     	self.dataSocket.sendto(sendString,self.destination)
 

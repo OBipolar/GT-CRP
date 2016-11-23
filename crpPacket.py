@@ -108,8 +108,8 @@ def fletcherCheckSum(packetString, k):
     return sum2+sum1+zero16
 #self defined queue class
 class Queue():
-    def __init__(self):
-        self.list = []
+    def __init__(self,mylist = []):
+        self.list = mylist
 
     def push(self,item):
         "Enqueue the 'item' into the queue"
@@ -141,5 +141,20 @@ class Queue():
     
         
 if __name__ == "__main__":
+    packet = dict()
+    packet["sourcePort"] = 1000
+    packet["destPort"] = 1200
+    packet["seqNum"] = 1
+    packet["data"] = ""
+    sendString = packetSerialize(packet)
+    print sendString
+    a = Queue()
+    a.insert_inorder(packet)
+    for x in a.list:
+        print x
+    print ord('c')
+        
+
+
     
     
