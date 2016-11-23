@@ -143,6 +143,17 @@ class CRP:
                     self._send_ack(data)
                     self.ready_for_close = True
                     self.receiver_close()
+                elif data['rst'] == 1:
+                    operation, filename = data['data'].split(' ')
+                    operation = operation.strip().lower()
+                    filename = filename.strip()
+                    if operation == 'push':
+                        #TODO readdata
+                    elif operation == 'get':
+                        try myfile = open(filename, 'r'):
+                            self.push_file_to_sending_queue(myfile)
+                        except:
+                            print "invlalid file name"
                 else:
                     print "wrong packet sent"
             else:
@@ -151,6 +162,19 @@ class CRP:
                     self._send_NACK(data["seqNum"]) #ack and rst means NACK
                     
                 
+    def push_file_to_sending_queue(self, file):
+        while True:
+            fileString = file.read(1004)
+            if fileString == "":
+                break
+            packet = dict()
+            packet["sourcePort"] = self.portNum
+            packet["destPort"] = self.destination[1]
+            packet["data"] = fileString
+            packet["checksum"] = fletcherCheckSum(data,16)
+            self.sendingQueue.push(packet)
+            
+
     
     def _send_NACK(self,seqNum):
         self.receivedSeqNum += 1
@@ -217,8 +241,7 @@ class CRP:
                 for index, notAckPacket in enumerate(self.notAckedQueue.list):
                     if notAckPacket["seqNum"] == key:
                         mypacket = self.notAckedQueue.remove(index)
-                        mypacket[1] = time.time()
-                        self.sendingQueue.push_front(mypacket)
+                        self.sendingQueue.push_front(mypacket[0])
                         self.ackedNum[key] = 0
             
     #this is used for send individual packet, used for receiver
@@ -342,8 +365,7 @@ class CRP:
             for index, packet in enumerate(self.notAckedQueue.list):
                 if time.time() - packet[1] > self.timeout:
                     packet = self.notAckedQueue.remove(index)
-                    packet[1] = time.time()
-                    self.sendingQueue.push_front(packet)
+                    self.sendingQueue.push_front(packet[0])
                 
     def set_window_size(self,size):
         if size > 0:
