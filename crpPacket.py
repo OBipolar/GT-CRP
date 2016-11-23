@@ -160,3 +160,18 @@ class Queue():
 
     def length(self):
         return len(self.list)
+    
+        
+if __name__ == "__main__":
+    packet = dict()
+    packet["sourcePort"] = 1000
+    packet["destPort"] = 1200
+    packet["seqNum"] = 1
+    packet["data"] = ""
+    sendString = packetSerialize(packet)
+    print sendString
+    a = Queue()
+    a.insert_inorder(packet)
+    for x in a.list:
+        print x
+    print ord('c')
