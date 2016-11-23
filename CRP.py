@@ -31,7 +31,7 @@ class CRP:
         #three way handshake of receiver
         if IPV6:
             self.dataSocket = socket.socket(socket.AF_INET6,socket.SOCK_DGRAM)
-        else：
+        else:
     	    self.dataSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
         self.dataSocket.settimeout(100) #timeout for whole connection
         listen_addr = ("", port)
@@ -71,7 +71,7 @@ class CRP:
     def sender(self):
     	while 1:
             time.sleep(0.5)
-            if not self.sendingQueue.isEmpty: # TODO：check if notackqueue has space using windowsize 
+            if not self.sendingQueue.isEmpty: # TODO: check if notackqueue has space using windowsize 
                 packet = self.sendingQueue.pop()
                 # ------------DEBUG INFO--------------    
                 pprint("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
@@ -158,7 +158,7 @@ class CRP:
     def _check_buffer_send_Ack(self,data):
         seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer]
 
-        if data['seqNum'] = self.expectedSeqNum:
+        if data['seqNum'] == self.expectedSeqNum:
             self.lock.require()
             dataIndex = self.receiveBUffer.index(data['seqNum'])
             if len(self.receiveBUffer.list)==1:
@@ -265,10 +265,10 @@ class CRP:
     	if netaddr.valid_ipv4(serverIP):
             self.dataSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         elif netaddr.valid_ipv6(serverIP):
-            self.dataSocket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)            
+            self.dataSocket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         else:
             print ("IP Address not valid")
-            break
+            raise
         listen_addr = ("", selfPort)
         self.dataSocket.bind(listen_addr)
         # Init data socket
@@ -295,23 +295,23 @@ class CRP:
             tcheck_timeout.join()
 
 
-"""
-    Called by server to close the connection
-"""
+
     def receiver_close(self):
+        """
+            Called by server to close the connection
+        """
         self.receivedSeqNum += 1
-        self._sendPacket(data {"fin": 1, "seqNum":self.receivedSeqNum})
+        self._sendPacket(data, {"fin": 1, "seqNum":self.receivedSeqNum})
         packet = self.dataSocket.recvfrom(self.packetSize)
         packet = packetDeserialize(packet)
         if(packet["ack"] == 1):
             print "close connection"
             sys.exit(0)
 
-
-"""
-    Called by client to close the connection 
-"""
     def close(self):
+        """
+            Called by client to close the connection 
+        """
         # Create finish packet 
         if not self.ready_for_close:
             finPacket = {
