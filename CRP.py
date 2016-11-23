@@ -330,7 +330,7 @@ class CRP:
             print("CLOSED")
             sys.exit(0)
 
-    def check_timeout_resend():
+    def check_timeout_resend(self):
         while(True):
             if self.ready_for_close:
                 break
@@ -340,4 +340,9 @@ class CRP:
                     packet = self.notAckedQueue.remove(index)
                     packet[1] = time.time()
                     self.sendingQueue.push_front(packet)
+    def set_window_size(self,size):
+        if size > 0:
+            self.windowsize = size
+        
+        
                 
