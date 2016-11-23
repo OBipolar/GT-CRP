@@ -122,13 +122,23 @@ def fletcherCheckSum(packetString, k):
     sum2 = 0
     count = len(packetString)/k
     for index in range(count):
-        sum1 = (sum1 + packetString[count*k:(count+1)*k])%255
+        tempSum = 0
+        for char in packetString[index*k:(index+1)*k]:
+            tempSum += ord(char)
+        sum1 = (sum1 + tempSum)%255
         sum2 = (sum2+sum1)%255
-    sum1 = bin(sum1)[2:]
-    sum2 = bin(sum2<<8)[2:]
+    sum1 = make8bit(bin(sum1)[2:])
+    sum2 = make8bit(bin(sum2)[2:])
     zero16 = "0000000000000000"
     return sum2+sum1+zero16
 
+def make8bit(string):
+    if len(string) != 8:
+        compensate = 8 - len(string)
+        zeros = ''
+        for x in range(0,compensate):
+            zeros += "0"
+        return zeros+string
 class Queue():
     """
         Self defined queue class
@@ -169,9 +179,7 @@ if __name__ == "__main__":
     packet["seqNum"] = 1
     packet["data"] = ""
     sendString = packetSerialize(packet)
-    print sendString
-    a = Queue()
-    a.insert_inorder(packet)
-    for x in a.list:
-        print x
-    print ord('c')
+    getString = packetDeserialize(sendString)
+    print fletcherCheckSum("sendStringdhcsbchdsgcbdshgcdsuhuhuhuhbchdsgcbdsyuyvtfvtcdc",16)
+    
+
