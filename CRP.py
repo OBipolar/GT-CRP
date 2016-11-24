@@ -75,9 +75,12 @@ class CRP:
             time.sleep(0.5)
             if not self.sendingQueue.isEmpty(): # TODO: check if notackqueue has space using windowsize 
                 packet = self.sendingQueue.pop()
+                print "Sender now sending:"
+                print packet
                 packetString = packetSerialize(packet)
-                packetString = updateChecksum(packet['data'], 16)
-                # ------------DEBUG INFO--------------    
+                packetString = updateChecksum(packetString, 16)
+                print packetString
+                # ------------DEBUG INFO--------------
                 print("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
                 print("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
                 # ------------END DEBUG INFO--------------
@@ -95,6 +98,7 @@ class CRP:
                 self.close()
             print 'waiting for response'
             dataString, addr = self.dataSocket.recvfrom(self.packetSize)
+            print dataString
             data = packetDeserialize(dataString)
             print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data['fin']
             #check sum
@@ -280,7 +284,7 @@ class CRP:
         print packet
     	sendString = packetSerialize(packet)
         sendString = updateChecksum(sendString, 16)
-        print len(sendString)
+
     	self.dataSocket.sendto(sendString,self.destination)
 
 
