@@ -201,7 +201,13 @@ class CRP:
             packet["destPort"] = self.destination[1]
             packet["data"] = fileString
             self.sendingQueue.push(packet)
-            
+        endingPacket = dict()
+        self.sender_seqNum += 1
+        endingPacket["seqNum"] = self.sender_seqNum
+        endingPacket["sourcePort"] = self.portNum
+        endingPacket["destPort"] = self.destination[1]
+        endingPacket["data"] = '\0'
+        self.sendingQueue.push(endingPacket)
 
     
     def _send_NACK(self,seqNum):
@@ -299,7 +305,7 @@ class CRP:
                 nextSeqNum = self.readSeqNum + self.packetSize
                 data += topPacket["data"]
                 while not done:
-                    nextPacket = self.receiveBUffer.get()
+                    nextPacket = self.receiveBUffer.pop()
                     if nextPacket["seqNum"] == nextSeqNum:
                         data += nextPacket["data"]
                         if terminator in data:
