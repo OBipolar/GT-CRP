@@ -180,7 +180,15 @@ class Queue():
 
     def length(self):
         return len(self.list)
-    
+
+def get_zeros():
+    result = ''
+    for i in range(0,1004):
+        result += " "
+    return result
+
+def print_received_packet(packet):
+    print "Receive with SequenceNum: ", packet["seqNum"]," ackNum: ",packet["ackNum"], " ack_bit: ",packet["ack"], " fin: ", packet['fin']
         
 if __name__ == "__main__":
     packet = dict()

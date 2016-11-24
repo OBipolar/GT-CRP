@@ -22,10 +22,12 @@ class CRP:
     	self.receiver_seqNum = 0 #ACK sequence number
     	self.ready_for_close = False
     	self.ackedNum = dict()
-        self.receivedSeqNum = []
+        self.receiverSeqNum = 0
+        self.receivedSeqNum = set()
         self.readSeqNum = 0
         self.lock = threading.Lock()
         self.normalClose = None
+        self.emptyZeros = bits2Str(str(bin(1024))[2:], 4)
 
     def setupServer(self,port,IPV6):
         #three way handshake of receiver
@@ -88,18 +90,20 @@ class CRP:
                 time.sleep(0.5)
             except socket.timeout:
                 print "connection timeout"#a connection cannot exeet the timeout limit
-                self.receiver_close()
+                self.close()
             print 'waiting for response'
             dataString, addr = self.dataSocket.recvfrom(self.packetSize)
             data = packetDeserialize(dataString)
-            print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data[fin]
+            print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data['fin']
 
             #check sum
             if data["checksum"] ==  int(fletcherCheckSum(data["data"],16)):
+
                 #the other side send ackNum = desired SequenceNum
                 #when ack is 1, whcih means CRP previously sent something
                 #case 1: NACK-------------------------------------------- 
-                if data["ack"] == 1 and data["rst"] == 1:
+                if data["ack"] == 1 and data["rst"] == 1 and data['fin'] == 0:
+                    print "case 1: NACK"
                     for index, notAckPacket in enumerate(self.notAckedQueue.list):
                         if notAckPacket[0]["seqNum"] == data["ackNum"]:
                             mypacket = self.notAckedQueue.remove(index)
@@ -107,7 +111,8 @@ class CRP:
                             self.sendingQueue.push_front(mypacket)
                             break
                 #case 2: empty ACK packet--------------------------------
-                if data['ack'] == 1 and len(data['data'].strip()) == 0:
+                elif data['ack'] == 1 and len(data['data'].strip()) == 0 and data['fin'] == 0 and data['rst'] == 0:
+                    print "case 2: empty data with ack"
                     if str(data['ackNum']) in self.ackedNum:
                         self.ackedNum[str(data['ackNum'])] += 1
                     else:
@@ -120,7 +125,8 @@ class CRP:
                                 break
                     self._check_nackQueue_retransmit()
                 #case 3 Data and ACK-------------------------------------
-                elif data['ack'] == 1 and len(data['data'].strip()) > 0:
+                elif data['ack'] == 1 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
+                    print "case 3 data and ack"
                     if str(data['ackNum']) in self.ackedNum:
                         self.ackedNum[str(data['ackNum'])] += 1
                     else:
@@ -132,18 +138,29 @@ class CRP:
                                 self.notAckedQueue.remove(index)
                                 break
                     self._check_nackQueue_retransmit()
-                    self._push_to_Buffer(data)
-                    self._check_buffer_send_Ack(data)
+                    if data['seqNum'] not in  self.receivedSeqNum:
+                        self._push_to_Buffer(data)
+                        self._check_buffer_send_Ack(data)
                 #case 4 only data, no ACK--------------------------------
-                elif data['ack'] == 0 and len(data['data'].strip()) > 0:
-                    self._push_to_Buffer(data)
-                    self._check_buffer_send_Ack(data)
+                elif data['ack'] == 0 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
+                    print "case 4, only data, no ACK"
+                    if data['seqNum'] not in  receivedSeqNum:
+                        self._push_to_Buffer(data)
+                        self._check_buffer_send_Ack(data)
                 #case 5 finish connection-------------------------------
                 elif data['fin'] == 1:
-                    self._send_ack(data)
-                    self.ready_for_close = True
-                    self.receiver_close()
+                    print "go into fin"
+                    if self.ready_for_close:
+                        self._sendPacket("", {'ack':1})
+                        print("CLOSED")
+                        sys.exit(0)
+                    else:
+                        self._sendPacket("", {'ack':1})
+                        self.ready_for_close = True
+                        self.receiver_close()
+                        print "go out of fin"
                 elif data['rst'] == 1:
+                    print "transfer file"
                     operation, filename = data['data'].split(' ')
                     operation = operation.strip().lower()
                     filename = filename.strip()
@@ -159,6 +176,7 @@ class CRP:
                 else:
                     print "wrong packet sent"
             else:
+                print "checksum fails"
                 if len(data['data'].strip()) > 0:
                     self.receiver_seqNum += 1
                     self._send_NACK(data["seqNum"]) #ack and rst means NACK
@@ -179,7 +197,7 @@ class CRP:
 
     
     def _send_NACK(self,seqNum):
-        self.receivedSeqNum += 1
+        self.receiverSeqNum += 1
         self._sendPacket("", {"ack": 1, "rst":1, "ackNum": seqNum})
 
     def _check_buffer_send_Ack(self,data):
@@ -223,10 +241,8 @@ class CRP:
             self._send_ack(Mypacket["seqNum"]+1)
 
     def _send_ack(self, seqNum):
-        self.receivedSeqNum += 1
-        rtpPacketDict["sourcePort"] = self.port
-        rtpPacketDict["destPort"] = self.destAddr[1]
-        self._sendPacket("",{"ackNum":seqNum, "seqNum":self.receivedSeqNum})
+        self.receiverSeqNum += 1
+        self._sendPacket("",{"ackNum":seqNum, "seqNum":self.receiverSeqNum})
 
 
     def _push_to_Buffer(self,data):
@@ -258,6 +274,7 @@ class CRP:
     		packet[key] = header[key]
     	sendString = packetSerialize(packet)
         sendString = updateChecksum(sendString, 16)
+        print len(sendString)
     	self.dataSocket.sendto(sendString,self.destination)
 
 
@@ -328,10 +345,14 @@ class CRP:
         """
             Called by server to close the connection
         """
-        self.receivedSeqNum += 1
-        self._sendPacket(data, {"fin": 1, "seqNum":self.receivedSeqNum})
-        packet = self.dataSocket.recvfrom(self.packetSize)
+        print "go in to receiver close"
+        self.receiverSeqNum += 1
+        time.sleep(1)
+        self._sendPacket("", {"fin": 1, "seqNum":self.receiverSeqNum})
+        print "receiver send packet with fin set to 1" 
+        packet,addr = self.dataSocket.recvfrom(self.packetSize)
         packet = packetDeserialize(packet)
+        print_received_packet(packet)
         if(packet["ack"] == 1):
             print "close connection"
             sys.exit(0)
@@ -343,21 +364,16 @@ class CRP:
         # Create finish packet
         if not self.ready_for_close:
             finPacket = {
-                "sourcePort": self.portNum,
-                "destPort": self.destination[1],
-                "seqNum": 0,
+                "seqNum": self.sender_seqNum,
                 "fin": 1
                 }
             self._sendPacket("", finPacket)
-            packet1,addr = self.dataSocket.recvfrom(self.packetSize)
-            time.sleep(1)
-            packet2, addr = self.dataSocket.recvfrom(self.packetSize)
-            packet1 = packetDeserialize(packet1)
-            packet2 = packetDeserialize(packet2)
-            if(packet1['ack'] == 1 and packet2['fin'] == 1):
-                self._send_ack(packet2['seqNum']+1)
-            print("CLOSED")
-            sys.exit(0)
+            # packet1,addr = self.dataSocket.recvfrom(self.packetSize)
+            # packet1 = packetDeserialize(packet1)
+            # print "in close"
+            # print_received_packet(packet1)
+            # if packet1['ack'] == 1:
+            self.ready_for_close = True
 
     def check_timeout_resend(self):
         while(True):
@@ -374,3 +390,4 @@ class CRP:
     def set_window_size(self,size):
         if size > 0:
             self.windowsize = size
+

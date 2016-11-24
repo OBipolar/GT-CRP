@@ -1,6 +1,6 @@
 from CRP import *
 import argparse
-
+import sys
 client = CRP()
 parser = argparse.ArgumentParser()
 parser.add_argument("A", help="the IP address of FTA-Server")
@@ -25,13 +25,17 @@ while keepAlive:
         print '-----------------------------------------------------------------------\n'
 
     if command == 'exit':
+        print "exit"
         keepAlive = False
+        sys.exit(0)
 
     if command == 'connect':
         client.connectTo(10, args.A, args.P)
 
     if command == 'disconnect':
         client.close()
+        keepAlive = False
+        sys.exit(0)
 
 	if command.split(' ')[0] == 'get':
 		filename = command.split(' ')[1]
@@ -40,7 +44,6 @@ while keepAlive:
         client._sendPacket(packetData, packetHeader)
         isDone = False
         currentMessage = ""
-
         while not isDone:
             data = client.readData(fileTerminator)
             currentMessage += data
