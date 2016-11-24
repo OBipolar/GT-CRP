@@ -149,6 +149,7 @@ def make8bit(string):
         for x in range(0,compensate):
             zeros += "0"
     return zeros+string
+
 class Queue():
     """
         Self defined queue class
@@ -204,4 +205,5 @@ if __name__ == "__main__":
     sendString = packetSerialize(packet)
     getString = packetDeserialize(sendString)
     checksum = fletcherCheckSum("sendStringdhcsbchdsgcbdshgcdsuhuhuhuhbchdsgcbdsyuyvtfvtcdc",16)
-
+    # checksum = fletcherCheckSum("hahaha",16)
+    print checksum
