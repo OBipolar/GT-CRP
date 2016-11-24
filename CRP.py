@@ -39,8 +39,11 @@ class CRP:
         print "server listening on port " , port
         data, addr = self.dataSocket.recvfrom(self.packetSize)
         synPacketDictFromClient = packetDeserialize(data)
-        # Three way handshake start---------------------------------------- 
-        if (synPacketDictFromClient['checksum'] == fletcherCheckSum(data["data"],16) and synPacketDictFromClient['syn'] == 1):
+        checksum = fletcherCheckSum(data[20:], 16)
+        print synPacketDictFromClient['checksum']
+        print checksum
+        # Three way handshake start----------------------------------------
+        if (synPacketDictFromClient['checksum'] == int(checksum) and synPacketDictFromClient['syn'] == 1):
             # create new
             self.portNum = port #port listening
             self.destination = addr #send packet to destination
@@ -149,8 +152,10 @@ class CRP:
                     filename = filename.strip()
                     if operation == 'push':
                         #TODO readdata
+                        pass
                     elif operation == 'get':
-                        try myfile = open(filename, 'r'):
+                        try:
+                            myfile = open(filename, 'r')
                             self.push_file_to_sending_queue(myfile)
                         except:
                             print "invlalid file name"
@@ -243,7 +248,7 @@ class CRP:
                         mypacket = self.notAckedQueue.remove(index)
                         self.sendingQueue.push_front(mypacket[0])
                         self.ackedNum[key] = 0
-            
+
     #this is used for send individual packet, used for receiver
     def _sendPacket(self, data,header):
     	packet = dict()
@@ -251,14 +256,13 @@ class CRP:
     	packet["destPort"] = self.destination[1]
     	packet["data"] = data
     	packet["checksum"] = fletcherCheckSum(data,16)
-        
+
     	for key in header:
     		packet[key] = header[key]
     	sendString = packetSerialize(packet)
-
+        sendString = updateChecksum(data, 16)
     	self.dataSocket.sendto(sendString,self.destination)
 
-    	
 
     def _receive_packet(self):
     	return self.dataSocket.recvfrom(self.packetSize)[0]
@@ -285,7 +289,7 @@ class CRP:
                 return data
         return data
 
-    def connectTo(self, selfPort, serverIP, serverPort):
+    def connectTo(self, selfPort, serverIP, serverPort, initialPacketSizeInByte=1024):
     	if netaddr.valid_ipv4(serverIP):
             self.dataSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         elif netaddr.valid_ipv6(serverIP):
@@ -299,9 +303,11 @@ class CRP:
         self.portNum = selfPort
         self.destination = (serverIP, serverPort)
         self.timeout = 2 #init timeout for packet resend is 2 seconds
-        self._sendPacket(packetDeserialize(str(bin(initialPacketSizeInByte))[2:], 4), {"syn":1})
+        self._sendPacket(bits2Str(str(bin(initialPacketSizeInByte))[2:], 4), {"syn":1})
+        print "send inital syn packet"
         ackPacketString = self._receive_packet()
         ackPacket = packetDeserialize(ackPacketString)
+        print "recevie inital ack packet"
         if (ackPacket['checksum'] == fletcherCheckSum(ackPacketString,16) and ackPacket['syn'] == 1 and ackPacket['ack'] == 1):
             self._sendPacket("", {"ack": 1})
             # ------------FINISH THREE WAY HANDSHAKE--------------
@@ -334,9 +340,9 @@ class CRP:
 
     def close(self):
         """
-            Called by client to close the connection 
+            Called by client to close the connection
         """
-        # Create finish packet 
+        # Create finish packet
         if not self.ready_for_close:
             finPacket = {
                 "sourcePort": self.portNum,
@@ -366,10 +372,7 @@ class CRP:
                 if time.time() - packet[1] > self.timeout:
                     packet = self.notAckedQueue.remove(index)
                     self.sendingQueue.push_front(packet[0])
-                
+
     def set_window_size(self,size):
         if size > 0:
             self.windowsize = size
-        
-        
-                

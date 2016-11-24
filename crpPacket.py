@@ -108,6 +108,17 @@ def packetDeserialize(packetString):
         raise
     return packet
 
+def updateChecksum(packetString, k):
+    """
+        Fletcher CheckSum Update
+        Update packet string after performing checksum
+        Args:
+            packetString: packet in the form of binary string
+            k: flecher constant
+    """
+    checksum = bits2Str(str(bin(int(fletcherCheckSum(packetString, k))))[2:], 4)
+    return packetString[:16] + checksum + packetString[20:]
+
 def fletcherCheckSum(packetString, k):
     """
         Fletcher CheckSum
