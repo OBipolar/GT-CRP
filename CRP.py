@@ -210,7 +210,6 @@ class CRP:
 
     def _check_buffer_send_Ack(self,data):
         seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer.getList()]
-
         if data['seqNum'] == self.expectedSeqNum:
             self.lock.acquire()
             dataIndex = seqNuminBuff.index(data['seqNum'])
@@ -250,7 +249,7 @@ class CRP:
 
     def _send_ack(self, seqNum):
         self.receiverSeqNum += 1
-        self._sendPacket("",{"ackNum":seqNum, "seqNum":self.receiverSeqNum})
+        self._sendPacket("",{"ack":1, "ackNum":seqNum, "seqNum":self.receiverSeqNum})
 
 
     def _push_to_Buffer(self,data):
@@ -294,7 +293,7 @@ class CRP:
     def readData(self, terminator):
         data = ""
     	if not self.receiveBUffer.isEmpty():
-            topPacket = self.receiveBUffer.get()
+            topPacket = self.receiveBUffer.pop()
             if topPacket["seqNum"] == self.readSeqNum:
                 done = False
                 nextSeqNum = self.readSeqNum + self.packetSize
