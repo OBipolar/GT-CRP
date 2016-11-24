@@ -92,7 +92,7 @@ class CRP:
             print 'waiting for response'
             dataString, addr = self.dataSocket.recvfrom(self.packetSize)
             data = packetDeserialize(dataString)
-            print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data[fin]
+            print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data["fin"]
 
             #check sum
             if data["checksum"] ==  int(fletcherCheckSum(data["data"],16)):
@@ -183,7 +183,7 @@ class CRP:
         self._sendPacket("", {"ack": 1, "rst":1, "ackNum": seqNum})
 
     def _check_buffer_send_Ack(self,data):
-        seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer]
+        seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer.getList()]
 
         if data['seqNum'] == self.expectedSeqNum:
             self.lock.require()
@@ -232,7 +232,7 @@ class CRP:
     def _push_to_Buffer(self,data):
         if self.receiveBUffer.length() >= self.receiver_windowSize:
             return False
-        if data["seqNum"] < expectedSeqNum or data["seqNum"] >= self.expectedSeqNum+self.receiver_windowSize:
+        if data["seqNum"] < self.expectedSeqNum or data["seqNum"] >= self.expectedSeqNum+self.receiver_windowSize:
             return False
         self.receiveBUffer.insert_inorder(data)#may should be inverse
         return True
@@ -256,6 +256,8 @@ class CRP:
 
     	for key in header:
     		packet[key] = header[key]
+    
+        print packet
     	sendString = packetSerialize(packet)
         sendString = updateChecksum(sendString, 16)
     	self.dataSocket.sendto(sendString,self.destination)
@@ -266,7 +268,7 @@ class CRP:
 
     def readData(self, terminator):
         data = ""
-    	if not self.receiveBUffer.empty():
+    	if not self.receiveBUffer.isEmpty():
             topPacket = self.receiveBUffer.get()
             if topPacket["seqNum"] == self.readSeqNum:
                 done = False

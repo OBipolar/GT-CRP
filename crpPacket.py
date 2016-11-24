@@ -180,7 +180,10 @@ class Queue():
 
     def length(self):
         return len(self.list)
-    
+
+    def getList(self):
+        # List getter for iteration
+        return self.list
         
 if __name__ == "__main__":
     packet = dict()
