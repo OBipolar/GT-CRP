@@ -72,14 +72,15 @@ class CRP:
 
     def sender(self):
     	while 1:
-            time.sleep(2)
-            if len(self.sendingQueue.list) != 0: # TODO: check if notackqueue has space using windowsize 
-                packet = self.sendingQueue.list.pop(len(self.sendingQueue.list)-1)
+            time.sleep(0.5)
+            if not self.sendingQueue.isEmpty(): # TODO: check if notackqueue has space using windowsize 
+                packet = self.sendingQueue.pop()
+                packet["checksum"] = fletcherCheckSum(packet["data"],16)
                 print "Sender now sending:"
                 print packet
                 packetString = packetSerialize(packet)
                 packetString = updateChecksum(packetString, 16)
-                print packetString
+                print packetDeserialize(packetString)
                 # ------------DEBUG INFO--------------
                 print("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
                 print("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
@@ -98,8 +99,8 @@ class CRP:
                 self.close()
             print 'waiting for response'
             dataString, addr = self.dataSocket.recvfrom(self.packetSize)
-            print dataString
             data = packetDeserialize(dataString)
+            print data
             print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data['fin']
             #check sum
             if data["checksum"] ==  int(fletcherCheckSum(data["data"],16)):
@@ -125,8 +126,9 @@ class CRP:
                     #remove the acked packet from the notAckedQueue
                     if self.ackedNum[str(data['ackNum'])] == 1:
                         for index, packet in enumerate(self.notAckedQueue.list):
-                            if packet['seqNum'] == data["ackNum"] - 1:
+                            if packet[0]['seqNum'] == data["ackNum"] - 1:
                                 self.notAckedQueue.remove(index)
+                                print "remove packet with seqNum ", packet[0]['seqNum']
                                 break
                     self._check_nackQueue_retransmit()
                 #case 3 Data and ACK-------------------------------------
@@ -141,17 +143,20 @@ class CRP:
                         for index, packet in enumerate(self.notAckedQueue.list):
                             if packet[0]['seqNum'] == data["ackNum"] - 1:
                                 self.notAckedQueue.remove(index)
+                                print "remove packet with seqNum ", packet[0]['seqNum']
                                 break
                     self._check_nackQueue_retransmit()
                     if data['seqNum'] not in  self.receivedSeqNum:
                         self._push_to_Buffer(data)
-                        self._check_buffer_send_Ack(data)
+                        self._send_ack(data['seqNum']+1)
+                        #self._check_buffer_send_Ack(data)
                 #case 4 only data, no ACK--------------------------------
                 elif data['ack'] == 0 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
                     print "case 4, only data, no ACK"
                     if data['seqNum'] not in  self.receivedSeqNum:
                         self._push_to_Buffer(data)
-                        self._check_buffer_send_Ack(data)
+                        self._send_ack(data['seqNum']+1)
+                        #self._check_buffer_send_Ack(data)
                 #case 5 finish connection-------------------------------
                 elif data['fin'] == 1:
                     print "go into fin"
@@ -187,8 +192,8 @@ class CRP:
                 if len(data['data'].strip()) > 0:
                     self.receiver_seqNum += 1
                     self._send_NACK(data["seqNum"]) #ack and rst means NACK
-                    
-                
+
+
     def push_file_to_sending_queue(self, file):
         while True:
             fileString = file.read(1004)
@@ -201,6 +206,7 @@ class CRP:
             packet["destPort"] = self.destination[1]
             packet["data"] = fileString
             self.sendingQueue.push(packet)
+
         endingPacket = dict()
         self.sender_seqNum += 1
         endingPacket["seqNum"] = self.sender_seqNum
@@ -209,7 +215,7 @@ class CRP:
         endingPacket["data"] = '\0'
         self.sendingQueue.push(endingPacket)
 
-    
+
     def _send_NACK(self,seqNum):
         self.receiverSeqNum += 1
         self._sendPacket("", {"ack": 1, "rst":1, "ackNum": seqNum})
@@ -217,28 +223,27 @@ class CRP:
     def _check_buffer_send_Ack(self,data):
         seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer.getList()]
         if data['seqNum'] == self.expectedSeqNum:
-        #     self.lock.acquire()
-        #     dataIndex = seqNuminBuff.index(data['seqNum'])
-        #     if len(self.receiveBUffer.list)==1:
-        #         self.expectedSeqNum+=1
-        #     elif self.receiveBUffer.list[dataIndex + 1]['seqNum']  -self.expectedSeqNum >1:
-        #         self.expectedSeqNum+=1
-        #     else:
-        #         findBreak = False
-        #         for i in range(0,len(seqNuminBuff)-1):
-        #             if seqNuminBuff[i] + 1 != seqNuminBuff[i+1]:
-        #                 self.expectedSeqNum = seqNuminBuff[i] + 1
-        #                 findBreak = True
-        #                 break
-        #         if not findBreak:
-        #             self.expectedSeqNum = max(seqNuminBuff)+1
-        #     self._send_ack(self.expectedSeqNum)
-        #     self.lock.release()
-        # else:
-        #     self._send_ack(self.expectedSeqNum)
-            self._send_ack(self.expectedSeqNum + 1)
+            self.lock.acquire()
+            dataIndex = seqNuminBuff.index(data['seqNum'])
+            if len(self.receiveBUffer.list)==1:
+                self.expectedSeqNum+=1
+            elif self.receiveBUffer.list[dataIndex + 1]['seqNum']  -self.expectedSeqNum >1:
+                self.expectedSeqNum+=1
+            else:
+                findBreak = False
+                for i in range(0,len(seqNuminBuff)-1):
+                    if seqNuminBuff[i] + 1 != seqNuminBuff[i+1]:
+                        self.expectedSeqNum = seqNuminBuff[i] + 1
+                        findBreak = True
+                        break
+                if not findBreak:
+                    self.expectedSeqNum = max(seqNuminBuff)+1
+            self._send_ack(self.expectedSeqNum)
+            self.lock.release()
+        else:
+            self._send_ack(self.expectedSeqNum)
+        print "Send ack!!\n\n"
 
-        
 
     def _piggy_backing_send_ack(self,Mypacket):
         '''
@@ -256,8 +261,7 @@ class CRP:
 
     def _send_ack(self, seqNum):
         self.receiverSeqNum += 1
-        self._sendPacket("",{"ack":1, "ackNum":seqNum, "seqNum":self.receiverSeqNum})
-
+        self._sendPacket("",{"ackNum":seqNum, "seqNum":self.receiverSeqNum, "ack": 1})
 
     def _push_to_Buffer(self,data):
         if self.receiveBUffer.length() >= self.receiver_windowSize:
@@ -286,7 +290,6 @@ class CRP:
 
     	for key in header:
     		packet[key] = header[key]
-    
         print "sent: " ,packet
     	sendString = packetSerialize(packet)
         sendString = updateChecksum(sendString, 16)
@@ -390,12 +393,13 @@ class CRP:
             # print_received_packet(packet1)
             # if packet1['ack'] == 1:
             self.ready_for_close = True
+        sys.exit(0)
 
     def check_timeout_resend(self):
         while(True):
             if self.ready_for_close:
                 break
-            time.sleep(0.5)
+            time.sleep(2)
             if self.notAckedQueue.isEmpty():
                 continue
             for index, packet in enumerate(self.notAckedQueue.list):
