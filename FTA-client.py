@@ -37,8 +37,9 @@ while keepAlive:
         keepAlive = False
         sys.exit(0)
 
-	if command.split(' ')[0] == 'get':
-		filename = command.split(' ')[1]
+    if command.split(' ')[0] == 'get':
+	filename = command.split(' ')[1]
+        print command
         packetData = 'get ' + filename + fileTerminator
         packetHeader = dict()
         client._sendPacket(packetData, packetHeader)
