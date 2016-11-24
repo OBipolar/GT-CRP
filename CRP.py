@@ -4,7 +4,7 @@ import threading
 import sys
 import time
 import netaddr
-
+import os
 class CRP:
 
     def __init__(self):
@@ -75,13 +75,15 @@ class CRP:
             time.sleep(0.5)
             if not self.sendingQueue.isEmpty(): # TODO: check if notackqueue has space using windowsize 
                 packet = self.sendingQueue.pop()
+                packetString = packetSerialize(packet)
+                packetString = updateChecksum(packet['data'], 16)
                 # ------------DEBUG INFO--------------    
-                pprint("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
-                pprint("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
+                print("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
+                print("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
                 # ------------END DEBUG INFO--------------
-                self.dataSocket.sendto(packetString, self.destination[0])
+                self.dataSocket.sendto(packetString, self.destination)
                 if packet["seqNum"] != 0:
-                    self.notAckedQueue.push([packetString, time.time()]) # TODO: resend if packet in notAckedQueue exceed timeout 
+                    self.notAckedQueue.push([packet, time.time()]) # TODO: resend if packet in notAckedQueue exceed timeout 
 
 
     def receiver(self):
@@ -143,7 +145,7 @@ class CRP:
                 #case 4 only data, no ACK--------------------------------
                 elif data['ack'] == 0 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
                     print "case 4, only data, no ACK"
-                    if data['seqNum'] not in  receivedSeqNum:
+                    if data['seqNum'] not in  self.receivedSeqNum:
                         self._push_to_Buffer(data)
                         self._check_buffer_send_Ack(data)
                 #case 5 finish connection-------------------------------
@@ -167,11 +169,13 @@ class CRP:
                         #TODO readdata
                         pass
                     elif operation == 'get':
-                        try:
-                            myfile = open(filename, 'r')
-                            self.push_file_to_sending_queue(myfile)
-                        except:
-                            print "invlalid file name"
+                        files = [f for f in os.listdir('.') if os.path.isfile(f)]
+                        filename = filename.strip('\x00')
+                        if filename not in files:
+                            print "can't find ",filename,  " in current directory"
+                            self.close()
+                        myfile = open(filename, 'r')
+                        self.push_file_to_sending_queue(myfile)
                 else:
                     print "wrong packet sent"
             else:
@@ -187,10 +191,11 @@ class CRP:
             if fileString == "":
                 break
             packet = dict()
+            self.sender_seqNum += 1
+            packet["seqNum"] = self.sender_seqNum
             packet["sourcePort"] = self.portNum
             packet["destPort"] = self.destination[1]
             packet["data"] = fileString
-            packet["checksum"] = fletcherCheckSum(data,16)
             self.sendingQueue.push(packet)
             
 
@@ -203,8 +208,8 @@ class CRP:
         seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer.getList()]
 
         if data['seqNum'] == self.expectedSeqNum:
-            self.lock.require()
-            dataIndex = self.receiveBUffer.index(data['seqNum'])
+            self.lock.acquire()
+            dataIndex = seqNuminBuff.index(data['seqNum'])
             if len(self.receiveBUffer.list)==1:
                 self.expectedSeqNum+=1
             elif self.receiveBUffer.list[dataIndex + 1]['seqNum']  -self.expectedSeqNum >1:

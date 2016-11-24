@@ -24,6 +24,7 @@ def listen_cmd():
         if command =='terminate':
             live =False
             server.close()
+            sys.exit(0)
 
 server = CRP()
 parser = argparse.ArgumentParser()

@@ -42,7 +42,7 @@ while keepAlive:
         print command
         packetData = 'get ' + filename + fileTerminator
         packetHeader = dict()
-        client._sendPacket(packetData, packetHeader)
+        client._sendPacket(packetData, {'rst':1})
         isDone = False
         currentMessage = ""
         while not isDone:
