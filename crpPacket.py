@@ -23,7 +23,6 @@ def bits2Str(bits, byteLength):
             bits: binary string
             byteLength: length of expected output string
     """
-    s = ''
     charList = []
 
     if len(bits) <= byteLength * BYTE_SIZE:
@@ -34,7 +33,7 @@ def bits2Str(bits, byteLength):
     for idx in range(len(bits) / BYTE_SIZE):
         byte = bits[idx * BYTE_SIZE: (idx+1) * BYTE_SIZE]
         charList.append(chr(int(''.join([str(bit) for bit in byte]), 2)))
-    s = s.join(charList)
+    s = ''.join(charList)
 
     return s
 
@@ -116,7 +115,7 @@ def updateChecksum(packetString, k):
             packetString: packet in the form of binary string
             k: flecher constant
     """
-    checksum = bits2Str(str(bin(int(fletcherCheckSum(packetString, k))))[2:], 4)
+    checksum = bits2Str(str(bin(int(fletcherCheckSum(packetString[20:], k))))[2:], 4)
     return packetString[:16] + checksum + packetString[20:]
 
 def fletcherCheckSum(packetString, k):

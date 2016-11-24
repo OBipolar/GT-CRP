@@ -39,11 +39,8 @@ class CRP:
         print "server listening on port " , port
         data, addr = self.dataSocket.recvfrom(self.packetSize)
         synPacketDictFromClient = packetDeserialize(data)
-        checksum = fletcherCheckSum(data[20:], 16)
-        print synPacketDictFromClient['checksum']
-        print checksum
         # Three way handshake start----------------------------------------
-        if (synPacketDictFromClient['checksum'] == int(checksum) and synPacketDictFromClient['syn'] == 1):
+        if (synPacketDictFromClient['checksum'] == int(fletcherCheckSum(data[20:], 16)) and synPacketDictFromClient['syn'] == 1):
             # create new
             self.portNum = port #port listening
             self.destination = addr #send packet to destination
@@ -53,9 +50,9 @@ class CRP:
             self._sendPacket("", {"ack": 1, "syn":1})
 
             # # wait for ack from client
-            ackFromClient = self._receivePacket()
-            ackFromClientDict = packetDeserialize(ackFromClient)
-            if (ackFromClientDict['checksum'] == fletcherCheckSum(data,16) and ackFromClientDict['ack'] == 1):
+            ackData = self._receive_packet()
+            ackFromClientDict = packetDeserialize(ackData)
+            if (ackFromClientDict['checksum'] == int(fletcherCheckSum(ackData[20:], 16)) and ackFromClientDict['ack'] == 1):
                 print "BOOM! Shakalaka: " + str(addr[1])
                 # ------------FINISH THREE WAY HANDSHAKE--------------#
                 tSender = threading.Thread(target=self.sender)
@@ -98,7 +95,7 @@ class CRP:
             print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data[fin]
 
             #check sum
-            if data["checksum"] ==  fletcherCheckSum(data["data"],16):
+            if data["checksum"] ==  int(fletcherCheckSum(data["data"],16)):
                 #the other side send ackNum = desired SequenceNum
                 #when ack is 1, whcih means CRP previously sent something
                 #case 1: NACK-------------------------------------------- 
@@ -260,7 +257,7 @@ class CRP:
     	for key in header:
     		packet[key] = header[key]
     	sendString = packetSerialize(packet)
-        sendString = updateChecksum(data, 16)
+        sendString = updateChecksum(sendString, 16)
     	self.dataSocket.sendto(sendString,self.destination)
 
 
@@ -308,7 +305,8 @@ class CRP:
         ackPacketString = self._receive_packet()
         ackPacket = packetDeserialize(ackPacketString)
         print "recevie inital ack packet"
-        if (ackPacket['checksum'] == fletcherCheckSum(ackPacketString,16) and ackPacket['syn'] == 1 and ackPacket['ack'] == 1):
+        print ackPacket
+        if (ackPacket['checksum'] == int(fletcherCheckSum(ackPacketString[20:],16)) and ackPacket['syn'] == 1 and ackPacket['ack'] == 1):
             self._sendPacket("", {"ack": 1})
             # ------------FINISH THREE WAY HANDSHAKE--------------
             tSender = threading.Thread(target=self.sender)
