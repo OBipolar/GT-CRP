@@ -2,6 +2,9 @@ from CRP import *
 import argparse
 import sys
 import threading
+from optparse import OptionParser
+DEBUG = False
+
 def listen_cmd():
     live = True
     while live:
@@ -25,11 +28,14 @@ def listen_cmd():
             live =False
             server.close()
             sys.exit(0)
-
 server = CRP()
 parser = argparse.ArgumentParser()
 parser.add_argument("X", help="the UDP port number of FTA-Server", type=int)
+parser.add_argument("d", help="debug mode", type=str)
+
 args = parser.parse_args()
+if args.d == 'd':
+    server.debug == True
 port = args.X
 if port < 0  or port > 65535:
     print "invalid port number"

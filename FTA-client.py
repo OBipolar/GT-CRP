@@ -6,7 +6,10 @@ client = CRP()
 parser = argparse.ArgumentParser()
 parser.add_argument("A", help="the IP address of FTA-Server")
 parser.add_argument("P", help="the UDP port number of FTA-Server", type=int)
+parser.add_argument("d", help="debug mode", type=str)
 args = parser.parse_args()
+if args.d == 'd':
+    client.debug == True
 fileTerminator = "\0"
 keepAlive = True
 
@@ -55,7 +58,8 @@ while keepAlive:
                 currentMessage = currentMessage.strip()
                 isDone = True
                 print "write to file"
-                print currentMessage
+                if client.debug:
+                    print currentMessage
                 f.write(currentMessage)
                 f.close()
 

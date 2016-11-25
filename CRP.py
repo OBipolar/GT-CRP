@@ -29,6 +29,7 @@ class CRP:
         self.lock = threading.Lock()
         self.normalClose = None
         self.emptyZeros = bits2Str(str(bin(1024))[2:], 4)
+        self.debug = False
 
     def setupServer(self,port,IPV6):
         """
@@ -86,8 +87,9 @@ class CRP:
                 packetString = packetSerialize(packet)
                 packetString = updateChecksum(packetString, 16)
                 # ------------DEBUG INFO--------------
-                print("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
-                print("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
+                if self.debug:
+                    print("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
+                    print("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
                 # ------------END DEBUG INFO--------------
                 self.dataSocket.sendto(packetString, self.destination)
                 if packet["seqNum"] != 0:
@@ -109,7 +111,8 @@ class CRP:
             print 'waiting for response'
             dataString, addr = self.dataSocket.recvfrom(self.packetSize)
             data = packetDeserialize(dataString)
-            print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data['fin']
+            if self.debug:
+                print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data['fin']
             #check sum
             if data["checksum"] == int(fletcherCheckSum(dataString,16)):
 
@@ -118,7 +121,8 @@ class CRP:
 
                 #case 1: NACK--------------------------------------------
                 if data["ack"] == 1 and data["rst"] == 1 and data['fin'] == 0:
-                    print "---------------------- case 1: NACK ----------------------"
+                    if self.debug:
+                        print "---------------------- case 1: NACK ----------------------"
                     for index, notAckPacket in enumerate(self.notAckedQueue.list):
                         if notAckPacket[0]["seqNum"] == data["ackNum"]:
                             mypacket = self.notAckedQueue.remove(index)
@@ -128,7 +132,8 @@ class CRP:
 
                 #case 2: empty ACK packet--------------------------------
                 elif data['ack'] == 1 and len(data['data'].strip()) == 0 and data['fin'] == 0 and data['rst'] == 0:
-                    print "---------------------- case 2: empty data with ack ----------------------"
+                    if self.debug:
+                        print "---------------------- case 2: empty data with ack ----------------------"
                     if str(data['ackNum']) in self.ackedNum:
                         self.ackedNum[str(data['ackNum'])] += 1
                     else:
@@ -144,7 +149,8 @@ class CRP:
 
                 #case 3 Data and ACK-------------------------------------
                 elif data['ack'] == 1 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
-                    print "---------------------- case 3 data and ack ----------------------"
+                    if self.debug:
+                        print "---------------------- case 3 data and ack ----------------------"
                     if str(data['ackNum']) in self.ackedNum:
                         self.ackedNum[str(data['ackNum'])] += 1
                     else:
@@ -164,7 +170,8 @@ class CRP:
 
                 #case 4 only data, no ACK--------------------------------
                 elif data['ack'] == 0 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
-                    print "---------------------- case 4, only data, no ACK ----------------------"
+                    if self.debug:
+                        print "---------------------- case 4, only data, no ACK ----------------------"
                     if data['seqNum'] not in  self.receivedSeqNum:
                         self._push_to_Buffer(data)
                         #self._send_ack(data['seqNum']+1)
@@ -172,7 +179,8 @@ class CRP:
 
                 #case 5 finish connection-------------------------------
                 elif data['fin'] == 1:
-                    print "go into fin"
+                    if self.debug:
+                        print "go into fin"
                     if self.ready_for_close:
                         self._sendPacket("", {'ack':1})
                         print("CLOSED")
@@ -181,7 +189,8 @@ class CRP:
                         self._sendPacket("", {'ack':1})
                         self.ready_for_close = True
                         self.receiver_close()
-                        print "go out of fin"
+                        if self.debug:
+                            print "go out of fin"
 
                 #case 6 data transfer-----------------------------------
                 elif data['rst'] == 1:
@@ -423,11 +432,13 @@ class CRP:
         """
             Called by server to close the connection
         """
-        print "go in to receiver close"
+        if self.debug:
+            print "go in to receiver close"
         self.receiverSeqNum += 1
         time.sleep(1)
         self._sendPacket("", {"fin": 1, "seqNum":self.receiverSeqNum})
-        print "receiver send packet with fin set to 1" 
+        if self.debug:
+            print "receiver send packet with fin set to 1" 
         packet,addr = self.dataSocket.recvfrom(self.packetSize)
         packet = packetDeserialize(packet)
         print_received_packet(packet)
