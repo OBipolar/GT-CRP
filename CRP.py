@@ -148,15 +148,15 @@ class CRP:
                     self._check_nackQueue_retransmit()
                     if data['seqNum'] not in  self.receivedSeqNum:
                         self._push_to_Buffer(data)
-                        self._send_ack(data['seqNum']+1)
-                        #self._check_buffer_send_Ack(data)
+                        #self._send_ack(data['seqNum']+1)
+                        self._check_buffer_send_Ack(data)
                 #case 4 only data, no ACK--------------------------------
                 elif data['ack'] == 0 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
                     print "case 4, only data, no ACK"
                     if data['seqNum'] not in  self.receivedSeqNum:
                         self._push_to_Buffer(data)
-                        self._send_ack(data['seqNum']+1)
-                        #self._check_buffer_send_Ack(data)
+                        #self._send_ack(data['seqNum']+1)
+                        self._check_buffer_send_Ack(data)
                 #case 5 finish connection-------------------------------
                 elif data['fin'] == 1:
                     print "go into fin"
@@ -222,8 +222,23 @@ class CRP:
 
     def _check_buffer_send_Ack(self,data):
         seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer.getList()]
+        # if self.expectedSeqNum in seqNuminBuff:
+        #     if not self.receiveBUffer.isEmpty():
+        #         if len(seqNuminBuff) == 1:
+        #             self._send_ack(self.receiveBUffer.list[0]['seqNum']-1)
+        #         else:
+        #             pos = 0
+        #             for i in range(len(seqNuminBuff)-1,0,-1):
+        #                 if(self.receiveBUffer.list[i]["seqNum"] - self.receiveBUffer.list[i-1]["seqNum"]) != -1:
+        #                     pos = i
+        #             self.expectedSeqNum = self.receiveBUffer.list[pos]['seqNum'] - 1
+        #             self._send_ack(self.expectedSeqNum)
+        #     else:
+        #         self._send_ack(self.expectedSeqNum)
+        # else:
+        #     self._send_ack(self.expectedSeqNum)
+
         if data['seqNum'] == self.expectedSeqNum:
-            self.lock.acquire()
             dataIndex = seqNuminBuff.index(data['seqNum'])
             if len(self.receiveBUffer.list)==1:
                 self.expectedSeqNum+=1
@@ -239,7 +254,6 @@ class CRP:
                 if not findBreak:
                     self.expectedSeqNum = max(seqNuminBuff)+1
             self._send_ack(self.expectedSeqNum)
-            self.lock.release()
         else:
             self._send_ack(self.expectedSeqNum)
         print "Send ack!!\n\n"
@@ -275,7 +289,7 @@ class CRP:
         for key, value in self.ackedNum.iteritems():
             if value >= 3:
                 for index, notAckPacket in enumerate(self.notAckedQueue.list):
-                    if notAckPacket["seqNum"] == key:
+                    if notAckPacket["seqNum"] <= key:
                         mypacket = self.notAckedQueue.remove(index)
                         self.sendingQueue.push_front(mypacket[0])
                         self.ackedNum[key] = 0
@@ -313,6 +327,7 @@ class CRP:
                 for i in range(len(seqNuminBuff)-1,0,-1):
                     if(self.receiveBUffer.list[i]["seqNum"] - self.receiveBUffer.list[i-1]["seqNum"]) != -1:
                         pos = i
+                        break
                 for j in range(pos,len(seqNuminBuff)):
                     tempString = self.receiveBUffer.pop()['data']
                     print tempString

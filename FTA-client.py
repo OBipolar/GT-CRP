@@ -50,14 +50,15 @@ while keepAlive:
         while not isDone:
             data = client.readData(fileTerminator)
             time.sleep(0.3)
-            print data
             currentMessage += data
             if fileTerminator in data:
                 currentMessage = currentMessage[0:currentMessage.index(fileTerminator)]+currentMessage[currentMessage.index(fileTerminator)+1:]
                 currentMessage = currentMessage.strip()
                 isDone = True
                 print "write to file"
+                print currentMessage
                 f.write(currentMessage)
+                f.close()
 
     if command.split(' ')[0] == 'post':
     	filename = command.split(' ')[1]

@@ -195,7 +195,6 @@ def get_zeros():
 def print_received_packet(packet):
     print "Receive with SequenceNum: ", packet["seqNum"]," ackNum: ",packet["ackNum"], " ack_bit: ",packet["ack"], " fin: ", packet['fin']
 
-        
 if __name__ == "__main__":
     packet = dict()
     packet["sourcePort"] = 1000
