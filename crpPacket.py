@@ -174,7 +174,7 @@ class Queue():
 
     def insert_inorder(self,item):
         self.list.append(item)
-        self.list.sort(key=lambda x: x['seqNum']) 
+        self.list.sort(key=lambda x: x['seqNum'],reverse=True) 
 
     def remove(self, pos):
         return self.list.pop(pos)

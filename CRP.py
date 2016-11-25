@@ -302,25 +302,29 @@ class CRP:
 
     def readData(self, terminator):
         data = ""
-    	if not self.receiveBUffer.isEmpty():
-            topPacket = self.receiveBUffer.pop()
-            if topPacket["seqNum"] == self.readSeqNum:
-                done = False
-                nextSeqNum = self.readSeqNum + self.packetSize
-                data += topPacket["data"]
-                while not done:
-                    nextPacket = self.receiveBUffer.pop()
-                    if nextPacket["seqNum"] == nextSeqNum:
-                        data += nextPacket["data"]
-                        if terminator in data:
-                            done = True
-                        nextSeqNum = nextSeqNum + self.packetSize
-                    else:
-                        done = True
-                        self.receiveBUffer.put(nextPacket)
-                self.readSeqNum = nextSeqNum
-                return data
+        if not self.receiveBUffer.isEmpty():
+            seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer.getList()]
+            if len(seqNuminBuff) == 1:
+                tempString = self.receiveBUffer.pop()['data']
+                print "in read data: " ,tempString
+                data += tempString
+            else:
+                pos = 0
+                for i in range(len(seqNuminBuff)-1,0,-1):
+                    if(self.receiveBUffer.list[i]["seqNum"] - self.receiveBUffer.list[i-1]["seqNum"]) != -1:
+                        pos = i
+                for j in range(pos,len(seqNuminBuff)):
+                    tempString = self.receiveBUffer.pop()['data']
+                    print tempString
+                    data += tempString
         return data
+
+
+
+
+            
+
+
 
     def connectTo(self, selfPort, serverIP, serverPort, initialPacketSizeInByte=1024):
     	if netaddr.valid_ipv4(serverIP):
