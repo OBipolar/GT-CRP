@@ -114,7 +114,7 @@ def updateChecksum(packetString, k):
             packetString: packet in the form of binary string
             k: flecher constant
     """
-    checksum = bits2Str(str(bin(int(fletcherCheckSum(packetString[20:], k))))[2:], 4)
+    checksum = bits2Str(str(bin(int(fletcherCheckSum(packetString, k))))[2:], 4)
     return packetString[:16] + checksum + packetString[20:]
 
 def fletcherCheckSum(packetString, k):
@@ -125,6 +125,7 @@ def fletcherCheckSum(packetString, k):
             packetString: packet in the form of binary string
             k: flecher constant
     """
+    packetString = packetString[:16] + packetString[20:]
     if k not in FLETCHER_CONFIG:
         raise ValueError("Valid choices of k should be 16, 32 and 64")
     sum1 = 0
@@ -136,10 +137,8 @@ def fletcherCheckSum(packetString, k):
             tempSum += ord(char)
         sum1 = (sum1 + tempSum)%255
         sum2 = (sum2+sum1)%255
-    sum1 = make8bit(bin(sum1)[2:])
-    sum2 = make8bit(bin(sum2)[2:])
-    zero16 = "0000000000000000"
-    return zero16+zero16
+
+    return (sum2 << 24) | (sum1 << 8)
 
 def make8bit(string):
     zeros = ''

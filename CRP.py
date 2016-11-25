@@ -48,9 +48,9 @@ class CRP:
         print "server listening on port " , port
         data, addr = self.dataSocket.recvfrom(self.packetSize)
         synPacketDictFromClient = packetDeserialize(data)
-
+        print synPacketDictFromClient
         # Three way handshake start----------------------------------------
-        if (synPacketDictFromClient['checksum'] == int(fletcherCheckSum(data[20:], 16)) and synPacketDictFromClient['syn'] == 1):
+        if (synPacketDictFromClient['checksum'] == int(fletcherCheckSum(data, 16)) and synPacketDictFromClient['syn'] == 1):
             # create new
             self.portNum = port #port listening
             self.destination = addr #send packet to destination
@@ -62,7 +62,7 @@ class CRP:
             # # wait for ack from client
             ackData = self._receive_packet()
             ackFromClientDict = packetDeserialize(ackData)
-            if (ackFromClientDict['checksum'] == int(fletcherCheckSum(ackData[20:], 16)) and ackFromClientDict['ack'] == 1):
+            if (ackFromClientDict['checksum'] == int(fletcherCheckSum(ackData, 16)) and ackFromClientDict['ack'] == 1):
                 print "BOOM! Shakalaka: " + str(addr[1])
                 # ------------FINISH THREE WAY HANDSHAKE--------------#
                 tSender = threading.Thread(target=self.sender)
@@ -82,7 +82,6 @@ class CRP:
             time.sleep(1)
             if not self.sendingQueue.isEmpty(): # TODO: check if notackqueue has space using windowsize 
                 packet = self.sendingQueue.pop()
-                packet["checksum"] = fletcherCheckSum(packet["data"],16)
                 print "Sender now sending:"
                 print packet
                 packetString = packetSerialize(packet)
@@ -115,7 +114,7 @@ class CRP:
             print data
             print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data['fin']
             #check sum
-            if data["checksum"] ==  int(fletcherCheckSum(data["data"],16)):
+            if data["checksum"] == int(fletcherCheckSum(dataString,16)):
 
                 #the other side send ackNum = desired SequenceNum
                 #when ack is 1, whcih means CRP previously sent something
@@ -227,7 +226,7 @@ class CRP:
             fileString = file.read(1004)
             if fileString == "":
                 break
-            packet = dict()
+            packet = {}
             self.sender_seqNum += 1
             packet["seqNum"] = self.sender_seqNum
             packet["sourcePort"] = self.portNum
@@ -235,7 +234,7 @@ class CRP:
             packet["data"] = fileString
             self.sendingQueue.push(packet)
 
-        endingPacket = dict()
+        endingPacket = {}
         self.sender_seqNum += 1
         endingPacket["seqNum"] = self.sender_seqNum
         endingPacket["sourcePort"] = self.portNum
@@ -343,19 +342,19 @@ class CRP:
                 data: value of packet's data field
                 header: collection of packet's header
         """
-    	packet = dict()
+    	packet = {}
     	packet["sourcePort"] = self.portNum
     	packet["destPort"] = self.destination[1]
     	packet["data"] = data
-    	packet["checksum"] = fletcherCheckSum(data,16)
 
     	for key in header:
     		packet[key] = header[key]
         print "sent: " ,packet
     	sendString = packetSerialize(packet)
         sendString = updateChecksum(sendString, 16)
-
-    	self.dataSocket.sendto(sendString,self.destination)
+        print fletcherCheckSum(sendString, 16)
+        print packetDeserialize(sendString)
+    	self.dataSocket.sendto(sendString, self.destination)
 
 
     def _receive_packet(self):
@@ -416,7 +415,7 @@ class CRP:
         ackPacket = packetDeserialize(ackPacketString)
         print "recevie inital ack packet"
         print ackPacket
-        if (ackPacket['checksum'] == int(fletcherCheckSum(ackPacketString[20:],16)) and ackPacket['syn'] == 1 and ackPacket['ack'] == 1):
+        if (ackPacket['checksum'] == int(fletcherCheckSum(ackPacketString,16)) and ackPacket['syn'] == 1 and ackPacket['ack'] == 1):
             self._sendPacket("", {"ack": 1})
             # ------------FINISH THREE WAY HANDSHAKE--------------
             tSender = threading.Thread(target=self.sender)
