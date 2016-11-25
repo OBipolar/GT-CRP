@@ -72,7 +72,7 @@ class CRP:
 
     def sender(self):
     	while 1:
-            time.sleep(0.5)
+            time.sleep(1)
             if not self.sendingQueue.isEmpty(): # TODO: check if notackqueue has space using windowsize 
                 packet = self.sendingQueue.pop()
                 packet["checksum"] = fletcherCheckSum(packet["data"],16)
