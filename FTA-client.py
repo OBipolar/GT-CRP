@@ -34,8 +34,6 @@ while keepAlive:
 
     if command == 'disconnect':
         client.close()
-        keepAlive = False
-        sys.exit(0)
 
     if command.split(' ')[0] == 'get':
 	filename = command.split(' ')[1]
@@ -51,7 +49,7 @@ while keepAlive:
             if fileTerminator in data:
                 currentMessage = currentMessage[0:currentMessage.index(fileTerminator)]+currentMessage[currentMessage.index(fileTerminator)+1:]
                 currentMessage = currentMessage.strip()
-                f = open(filename,'w')
+                f = open('copy-'+ filename,'w')
                 f.write(currentMessage)
                 f.close()
                 isDone = True
