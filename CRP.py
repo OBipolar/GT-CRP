@@ -48,7 +48,7 @@ class CRP:
         print "server listening on port " , port
         data, addr = self.dataSocket.recvfrom(self.packetSize)
         synPacketDictFromClient = packetDeserialize(data)
-        print synPacketDictFromClient
+        # print synPacketDictFromClient
         # Three way handshake start----------------------------------------
         if (synPacketDictFromClient['checksum'] == int(fletcherCheckSum(data, 16)) and synPacketDictFromClient['syn'] == 1):
             # create new
@@ -63,7 +63,7 @@ class CRP:
             ackData = self._receive_packet()
             ackFromClientDict = packetDeserialize(ackData)
             if (ackFromClientDict['checksum'] == int(fletcherCheckSum(ackData, 16)) and ackFromClientDict['ack'] == 1):
-                print "BOOM! Shakalaka: " + str(addr[1])
+                print "BOOM! Connection established: " + str(addr[1])
                 # ------------FINISH THREE WAY HANDSHAKE--------------#
                 tSender = threading.Thread(target=self.sender)
                 tListener = threading.Thread(target=self.receiver)
@@ -83,10 +83,8 @@ class CRP:
             if not self.sendingQueue.isEmpty(): # TODO: check if notackqueue has space using windowsize 
                 packet = self.sendingQueue.pop()
                 print "Sender now sending:"
-                print packet
                 packetString = packetSerialize(packet)
                 packetString = updateChecksum(packetString, 16)
-                print packetDeserialize(packetString)
                 # ------------DEBUG INFO--------------
                 print("SENT: seq=" + str(packet["seqNum"]) + " ackNum=" + str(packet["ackNum"]) + " ack=" + str(packet["ack"]) + " fin=" + str(packet["fin"]))
                 print("TO: addr=" + str(self.destination[0]) + " port=" + str(self.destination[1]))  
@@ -111,7 +109,6 @@ class CRP:
             print 'waiting for response'
             dataString, addr = self.dataSocket.recvfrom(self.packetSize)
             data = packetDeserialize(dataString)
-            print data
             print "Receive with SequenceNum: ", data["seqNum"]," ackNum: ",data["ackNum"], " ack_bit: ",data["ack"], " fin: ", data['fin']
             #check sum
             if data["checksum"] == int(fletcherCheckSum(dataString,16)):
@@ -121,7 +118,7 @@ class CRP:
 
                 #case 1: NACK--------------------------------------------
                 if data["ack"] == 1 and data["rst"] == 1 and data['fin'] == 0:
-                    print "case 1: NACK"
+                    print "---------------------- case 1: NACK ----------------------"
                     for index, notAckPacket in enumerate(self.notAckedQueue.list):
                         if notAckPacket[0]["seqNum"] == data["ackNum"]:
                             mypacket = self.notAckedQueue.remove(index)
@@ -131,7 +128,7 @@ class CRP:
 
                 #case 2: empty ACK packet--------------------------------
                 elif data['ack'] == 1 and len(data['data'].strip()) == 0 and data['fin'] == 0 and data['rst'] == 0:
-                    print "case 2: empty data with ack"
+                    print "---------------------- case 2: empty data with ack ----------------------"
                     if str(data['ackNum']) in self.ackedNum:
                         self.ackedNum[str(data['ackNum'])] += 1
                     else:
@@ -147,7 +144,7 @@ class CRP:
 
                 #case 3 Data and ACK-------------------------------------
                 elif data['ack'] == 1 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
-                    print "case 3 data and ack"
+                    print "---------------------- case 3 data and ack ----------------------"
                     if str(data['ackNum']) in self.ackedNum:
                         self.ackedNum[str(data['ackNum'])] += 1
                     else:
@@ -167,7 +164,7 @@ class CRP:
 
                 #case 4 only data, no ACK--------------------------------
                 elif data['ack'] == 0 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
-                    print "case 4, only data, no ACK"
+                    print "---------------------- case 4, only data, no ACK ----------------------"
                     if data['seqNum'] not in  self.receivedSeqNum:
                         self._push_to_Buffer(data)
                         #self._send_ack(data['seqNum']+1)
@@ -349,11 +346,8 @@ class CRP:
 
     	for key in header:
     		packet[key] = header[key]
-        print "sent: " ,packet
     	sendString = packetSerialize(packet)
         sendString = updateChecksum(sendString, 16)
-        print fletcherCheckSum(sendString, 16)
-        print packetDeserialize(sendString)
     	self.dataSocket.sendto(sendString, self.destination)
 
 
@@ -372,7 +366,7 @@ class CRP:
             seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer.getList()]
             if len(seqNuminBuff) == 1:
                 tempString = self.receiveBUffer.pop()['data']
-                print "in read data: " ,tempString
+                # print "in read data: " ,tempString
                 data += tempString
             else:
                 pos = 0
@@ -382,7 +376,6 @@ class CRP:
                         break
                 for j in range(pos,len(seqNuminBuff)):
                     tempString = self.receiveBUffer.pop()['data']
-                    print tempString
                     data += tempString
         return data
 
@@ -414,7 +407,6 @@ class CRP:
         ackPacketString = self._receive_packet()
         ackPacket = packetDeserialize(ackPacketString)
         print "recevie inital ack packet"
-        print ackPacket
         if (ackPacket['checksum'] == int(fletcherCheckSum(ackPacketString,16)) and ackPacket['syn'] == 1 and ackPacket['ack'] == 1):
             self._sendPacket("", {"ack": 1})
             # ------------FINISH THREE WAY HANDSHAKE--------------
@@ -489,7 +481,7 @@ class CRP:
                 currentMessage = currentMessage.strip()
                 isDone = True
                 print "write to file"
-                print currentMessage
+                # print currentMessage
                 f.write(currentMessage)
                 f.close()
 
