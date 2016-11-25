@@ -60,12 +60,11 @@ while keepAlive:
                 f.close()
 
     if command.split(' ')[0] == 'post':
+        packetData = 'post ' + command.split(' ')[1] + fileTerminator
+        client._sendPacket(packetData, {'rst':1})
     	filename = command.split(' ')[1]
         f = open(filename, 'r')
-        file = filename + '\n' + f.read() + fileTerminator
-        client.push_file_to_sending_queue(file)
+        client.push_file_to_sending_queue(f)
 
-    # TODO: add windows size setup after merging
-	if command.split(' ')[0] == 'window':
-		w = int(command.split(' ')[1])
-        server.set_window_size(w)
+    if command.split(' ')[0] == 'window':
+        client.set_window_size(int(command.split(' ')[1]))

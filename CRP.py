@@ -189,14 +189,15 @@ class CRP:
 
                 #case 6 data transfer-----------------------------------
                 elif data['rst'] == 1:
-                    print "transfer file"
                     operation, filename = data['data'].split(' ')
                     operation = operation.strip().lower()
                     filename = filename.strip()
-                    if operation == 'push':
-                        #TODO readdata
-                        pass
+                    if operation == 'post':
+                        print "get file from client"
+                        tgetpost = threading.Thread(target=self.get_post_data,args=[filename,]) 
+                        tgetpost.start()
                     elif operation == 'get':
+                        print "transfer file"
                         files = [f for f in os.listdir('.') if os.path.isfile(f)]
                         filename = filename.strip('\x00')
                         if filename not in files:
@@ -473,4 +474,23 @@ class CRP:
     def set_window_size(self,size):
         if size > 0:
             self.windowsize = size
+
+    def get_post_data(self,filename):
+        print "gonna get ", filename
+        isDone = False
+        f = open("pushedfile.txt",'w')
+        currentMessage = ""
+        while not isDone:
+            fileTerminator = "\0"
+            data = self.readData(fileTerminator)
+            time.sleep(0.3)
+            currentMessage += data
+            if fileTerminator in data:
+                currentMessage = currentMessage[0:currentMessage.index(fileTerminator)]+currentMessage[currentMessage.index(fileTerminator)+1:]
+                currentMessage = currentMessage.strip()
+                isDone = True
+                print "write to file"
+                print currentMessage
+                f.write(currentMessage)
+                f.close()
 

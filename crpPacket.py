@@ -24,7 +24,6 @@ def bits2Str(bits, byteLength):
             byteLength: length of expected output string
     """
     charList = []
-
     if len(bits) <= byteLength * BYTE_SIZE:
         bits = str('0' * (byteLength * BYTE_SIZE - len(bits))) + bits 
     elif len(bits) > byteLength * BYTE_SIZE and byteLength != 0:
@@ -140,7 +139,7 @@ def fletcherCheckSum(packetString, k):
     sum1 = make8bit(bin(sum1)[2:])
     sum2 = make8bit(bin(sum2)[2:])
     zero16 = "0000000000000000"
-    return sum2+sum1+zero16
+    return zero16+zero16
 
 def make8bit(string):
     zeros = ''
