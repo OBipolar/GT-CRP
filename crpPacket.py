@@ -174,7 +174,7 @@ class Queue():
 
     def insert_inorder(self,item):
         self.list.append(item)
-        self.list.sort(key=lambda x: x['seqNum']) 
+        self.list.sort(key=lambda x: x['seqNum'],reverse=True) 
 
     def remove(self, pos):
         return self.list.pop(pos)
@@ -195,7 +195,6 @@ def get_zeros():
 def print_received_packet(packet):
     print "Receive with SequenceNum: ", packet["seqNum"]," ackNum: ",packet["ackNum"], " ack_bit: ",packet["ack"], " fin: ", packet['fin']
 
-        
 if __name__ == "__main__":
     packet = dict()
     packet["sourcePort"] = 1000

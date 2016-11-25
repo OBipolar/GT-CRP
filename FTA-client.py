@@ -1,14 +1,15 @@
 from CRP import *
 import argparse
 import sys
+import time
 client = CRP()
 parser = argparse.ArgumentParser()
 parser.add_argument("A", help="the IP address of FTA-Server")
 parser.add_argument("P", help="the UDP port number of FTA-Server", type=int)
 args = parser.parse_args()
 fileTerminator = "\0"
-
 keepAlive = True
+
 while keepAlive:
     print "Please enter a command ('help' for manual and 'exit' to quit):"
     command = raw_input()
@@ -30,29 +31,33 @@ while keepAlive:
         sys.exit(0)
 
     if command == 'connect':
-        client.connectTo(10, args.A, args.P)
+        tclient = threading.Thread(target = client.connectTo, args=[10, args.A, args.P])
+        tclient.start()
 
     if command == 'disconnect':
         client.close()
 
     if command.split(' ')[0] == 'get':
-	filename = command.split(' ')[1]
-        print command
+        filename = command.split(' ')[1]
+        print "gonna get ", filename
         packetData = 'get ' + filename + fileTerminator
         packetHeader = dict()
         client._sendPacket(packetData, {'rst':1})
         isDone = False
+        f = open("download-" + filename,'w')
         currentMessage = ""
         while not isDone:
             data = client.readData(fileTerminator)
+            time.sleep(0.3)
             currentMessage += data
             if fileTerminator in data:
                 currentMessage = currentMessage[0:currentMessage.index(fileTerminator)]+currentMessage[currentMessage.index(fileTerminator)+1:]
                 currentMessage = currentMessage.strip()
-                f = open('copy-'+ filename,'w')
+                isDone = True
+                print "write to file"
+                print currentMessage
                 f.write(currentMessage)
                 f.close()
-                isDone = True
 
     if command.split(' ')[0] == 'post':
     	filename = command.split(' ')[1]
