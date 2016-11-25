@@ -5,6 +5,7 @@ import sys
 import time
 import netaddr
 import os
+
 class CRP:
 
     def __init__(self):
@@ -30,7 +31,13 @@ class CRP:
         self.emptyZeros = bits2Str(str(bin(1024))[2:], 4)
 
     def setupServer(self,port,IPV6):
-        #three way handshake of receiver
+        """
+            Server setup with listener and sender running in threads
+
+            Args:
+                port: port used by server
+                IPV6: flag to determine whether a IPv6 address is used
+        """
         if IPV6:
             self.dataSocket = socket.socket(socket.AF_INET6,socket.SOCK_DGRAM)
         else:
@@ -41,6 +48,7 @@ class CRP:
         print "server listening on port " , port
         data, addr = self.dataSocket.recvfrom(self.packetSize)
         synPacketDictFromClient = packetDeserialize(data)
+
         # Three way handshake start----------------------------------------
         if (synPacketDictFromClient['checksum'] == int(fletcherCheckSum(data[20:], 16)) and synPacketDictFromClient['syn'] == 1):
             # create new
@@ -58,19 +66,18 @@ class CRP:
                 print "BOOM! Shakalaka: " + str(addr[1])
                 # ------------FINISH THREE WAY HANDSHAKE--------------#
                 tSender = threading.Thread(target=self.sender)
-                #tSender.daemon = True
                 tListener = threading.Thread(target=self.receiver)
-                #tListener.daemon = True
                 tcheck_timeout = threading.Thread(target=self.check_timeout_resend)
-                #tcheck_timeout.daemon = True
                 tListener.start()
                 tSender.start()
                 tcheck_timeout.start()
-                # tSender.join()
-                # tListener.join()
-                # tcheck_timeout.join()
 
     def sender(self):
+        """
+            Sender thread
+
+            Always running to check sending queue and send packets if necessary
+        """
     	while 1:
             time.sleep(1)
             if not self.sendingQueue.isEmpty(): # TODO: check if notackqueue has space using windowsize 
@@ -91,6 +98,11 @@ class CRP:
 
 
     def receiver(self):
+        """
+            Receiver thread
+
+            Always running to check incoming packets and respond
+        """
     	while 1:
             try:
                 time.sleep(0.5)
@@ -107,7 +119,8 @@ class CRP:
 
                 #the other side send ackNum = desired SequenceNum
                 #when ack is 1, whcih means CRP previously sent something
-                #case 1: NACK-------------------------------------------- 
+
+                #case 1: NACK--------------------------------------------
                 if data["ack"] == 1 and data["rst"] == 1 and data['fin'] == 0:
                     print "case 1: NACK"
                     for index, notAckPacket in enumerate(self.notAckedQueue.list):
@@ -116,6 +129,7 @@ class CRP:
                             mypacket[1] = time.time()
                             self.sendingQueue.push_front(mypacket)
                             break
+
                 #case 2: empty ACK packet--------------------------------
                 elif data['ack'] == 1 and len(data['data'].strip()) == 0 and data['fin'] == 0 and data['rst'] == 0:
                     print "case 2: empty data with ack"
@@ -131,6 +145,7 @@ class CRP:
                                 print "remove packet with seqNum ", packet[0]['seqNum']
                                 break
                     self._check_nackQueue_retransmit()
+
                 #case 3 Data and ACK-------------------------------------
                 elif data['ack'] == 1 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
                     print "case 3 data and ack"
@@ -150,6 +165,7 @@ class CRP:
                         self._push_to_Buffer(data)
                         #self._send_ack(data['seqNum']+1)
                         self._check_buffer_send_Ack(data)
+
                 #case 4 only data, no ACK--------------------------------
                 elif data['ack'] == 0 and len(data['data'].strip()) > 0 and data['fin'] == 0 and data['rst'] == 0:
                     print "case 4, only data, no ACK"
@@ -157,6 +173,7 @@ class CRP:
                         self._push_to_Buffer(data)
                         #self._send_ack(data['seqNum']+1)
                         self._check_buffer_send_Ack(data)
+
                 #case 5 finish connection-------------------------------
                 elif data['fin'] == 1:
                     print "go into fin"
@@ -169,6 +186,8 @@ class CRP:
                         self.ready_for_close = True
                         self.receiver_close()
                         print "go out of fin"
+
+                #case 6 data transfer-----------------------------------
                 elif data['rst'] == 1:
                     print "transfer file"
                     operation, filename = data['data'].split(' ')
@@ -195,6 +214,14 @@ class CRP:
 
 
     def push_file_to_sending_queue(self, file):
+        """
+            push_file_to_sending_queue
+
+            Read file and break into packet in sending queue
+
+            Args:
+                file: file to be sent
+        """
         while True:
             fileString = file.read(1004)
             if fileString == "":
@@ -217,6 +244,14 @@ class CRP:
 
 
     def _send_NACK(self,seqNum):
+        """
+            _send_NACK
+
+            Send nack for data retransmission, here we use ack bit plus rst bit as the signal of data retransmist
+
+            Args:
+                seqNum: seq num of packet to be retransmit
+        """
         self.receiverSeqNum += 1
         self._sendPacket("", {"ack": 1, "rst":1, "ackNum": seqNum})
 
@@ -260,9 +295,14 @@ class CRP:
 
 
     def _piggy_backing_send_ack(self,Mypacket):
-        '''
-        piggy backing send ack, attach ack to a packet we are going to send
-        '''
+        """
+            _piggy_backing_send_ack
+
+            Patch ack bit to data packet and send the ack packet
+
+            Args:
+                Mypacket: packet to be sent ack with
+        """
         findOne = False
         for index, packet in enumerate(self.sendingQueue.list):
             if packet["ack"] == 0:
@@ -294,8 +334,14 @@ class CRP:
                         self.sendingQueue.push_front(mypacket[0])
                         self.ackedNum[key] = 0
 
-    #this is used for send individual packet, used for receiver
-    def _sendPacket(self, data,header):
+    def _sendPacket(self, data, header):
+        """
+            Called by sender to send a individual packet to receiver
+
+            Args:
+                data: value of packet's data field
+                header: collection of packet's header
+        """
     	packet = dict()
     	packet["sourcePort"] = self.portNum
     	packet["destPort"] = self.destination[1]
@@ -315,6 +361,12 @@ class CRP:
     	return self.dataSocket.recvfrom(self.packetSize)[0]
 
     def readData(self, terminator):
+        """
+            Called by receiver to read data in the buffer
+
+            Args:
+                terminator: special character used to check whether reached the end of file
+        """
         data = ""
         if not self.receiveBUffer.isEmpty():
             seqNuminBuff = [x['seqNum'] for x in self.receiveBUffer.getList()]
@@ -334,14 +386,16 @@ class CRP:
                     data += tempString
         return data
 
-
-
-
-            
-
-
-
     def connectTo(self, selfPort, serverIP, serverPort, initialPacketSizeInByte=1024):
+        """
+            Called by client to create connection with server
+
+            Args:
+                selfPort: client's port
+                serverIP: server's IP address
+                serverPort: server's port
+                initialPacketSizeInByte: packet size for window
+        """
     	if netaddr.valid_ipv4(serverIP):
             self.dataSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         elif netaddr.valid_ipv6(serverIP):
@@ -365,17 +419,11 @@ class CRP:
             self._sendPacket("", {"ack": 1})
             # ------------FINISH THREE WAY HANDSHAKE--------------
             tSender = threading.Thread(target=self.sender)
-            #tSender.daemon = True
             tListener = threading.Thread(target=self.receiver)
-            #tListener.daemon = True
             tcheck_timeout = threading.Thread(target=self.check_timeout_resend)
-            #tcheck_timeout.daemon = True
             tListener.start()
             tSender.start()
             tcheck_timeout.start()
-            # tSender.join()
-            # tListener.join()
-            # tcheck_timeout.join()
 
 
 
@@ -406,11 +454,6 @@ class CRP:
                 "fin": 1
                 }
             self._sendPacket("", finPacket)
-            # packet1,addr = self.dataSocket.recvfrom(self.packetSize)
-            # packet1 = packetDeserialize(packet1)
-            # print "in close"
-            # print_received_packet(packet1)
-            # if packet1['ack'] == 1:
             self.ready_for_close = True
         sys.exit(0)
 

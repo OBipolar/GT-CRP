@@ -9,6 +9,7 @@ parser.add_argument("P", help="the UDP port number of FTA-Server", type=int)
 args = parser.parse_args()
 fileTerminator = "\0"
 keepAlive = True
+
 while keepAlive:
     print "Please enter a command ('help' for manual and 'exit' to quit):"
     command = raw_input()
@@ -35,8 +36,6 @@ while keepAlive:
 
     if command == 'disconnect':
         client.close()
-        keepAlive = False
-        sys.exit(0)
 
     if command.split(' ')[0] == 'get':
         filename = command.split(' ')[1]
@@ -45,7 +44,7 @@ while keepAlive:
         packetHeader = dict()
         client._sendPacket(packetData, {'rst':1})
         isDone = False
-        f = open("haha.txt",'w')
+        f = open("download-" + filename,'w')
         currentMessage = ""
         while not isDone:
             data = client.readData(fileTerminator)
